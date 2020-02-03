@@ -46,14 +46,18 @@ jobs:
 #         eval $(go env)
 #         mkdir -p ~/junit/
 #         ${GOPATH}/bin/gotestsum --junitfile ~/junit/unit-tests.xml -- -race -short $(go list ./...)
-  golangci-lint:
-    name: golangci-lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v1
-      - name: golangci-lint
-        uses: Mushus/golangci-linter@v1
+#  golangci-lint:
+#    name: golangci-lint
+#    runs-on: ubuntu-latest
+#    env:
+#      GOLANGCI_LINT_CONTAINER: golangci/golangci-lint:v1.23.2
+#    steps:
+#      - name: Check out code into the Go module directory
+#        uses: actions/checkout@v1
+#      - name: Pull golangci-lint docker container
+#        run: docker pull ${GOLANGCI_LINT_CONTAINER}
+#      - name: Run golangci-lint
+#        run: docker run --rm -v $(pwd):/app -w /app ${GOLANGCI_LINT_CONTAINER} golangci-lint run
 
   excludeFmtErrorf:
     name: exclude fmt.Errorf
