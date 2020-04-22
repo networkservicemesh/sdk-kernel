@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package kernel - TODO ask przemeklal to update
 package kernel
 
 import (
@@ -187,12 +188,12 @@ func searchByPCIAddress(ns netns.NsHandle, name, pciAddress string) (netlink.Lin
 	}
 
 	netDir := filepath.Join("/sys/bus/pci/devices", pciAddress, "net")
-	if _, err := os.Lstat(netDir); err != nil {
+	if _, err = os.Lstat(netDir); err != nil {
 		return nil, errors.Errorf("no net directory under pci device %s: %q", pciAddress, err)
 	}
 
-	fInfos, err := ioutil.ReadDir(netDir)
-	if err != nil {
+	fInfos, fInfosErr := ioutil.ReadDir(netDir)
+	if fInfosErr != nil {
 		return nil, errors.Errorf("failed to read net directory %s: %q", netDir, err)
 	}
 
