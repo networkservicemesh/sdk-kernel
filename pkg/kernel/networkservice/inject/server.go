@@ -43,11 +43,7 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (a *injectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-	mech := kernel.ToMechanism(conn.GetMechanism())
+	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
 
 	/* Lock the OS thread so we don't accidentally switch namespaces */
 	runtime.LockOSThread()
