@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package kernel contains Link representation of network interface
 package kernel
 
 import (
@@ -187,7 +188,7 @@ func searchByPCIAddress(ns netns.NsHandle, name, pciAddress string) (netlink.Lin
 	}
 
 	netDir := filepath.Join("/sys/bus/pci/devices", pciAddress, "net")
-	if _, err := os.Lstat(netDir); err != nil {
+	if _, err = os.Lstat(netDir); err != nil {
 		return nil, errors.Errorf("no net directory under pci device %s: %q", pciAddress, err)
 	}
 
