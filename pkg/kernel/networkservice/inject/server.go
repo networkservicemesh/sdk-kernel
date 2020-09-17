@@ -1,3 +1,4 @@
+// Copyright (c) 2020 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -18,19 +19,18 @@ package inject
 
 import (
 	"context"
-	"runtime"
-
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/utils"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
+	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
+
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-	"github.com/pkg/errors"
-	"github.com/vishvananda/netns"
 
-	sdkKernel "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/utils"
 )
 
 type injectServer struct {
@@ -46,15 +46,20 @@ func (a *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	connID := request.GetConnection().GetId()
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
 
-	/* Lock the OS thread so we don't accidentally switch namespaces */
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	forwarderNetNSHandle, err := netns.Get()
+	nsSwitch, err := utils.NewNSSwitch()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to obtain Forwarder's network namespace handle")
+		return nil, errors.Wrap(err, "failed to init net NS switch")
 	}
-	defer func() { _ = forwarderNetNSHandle.Close() }()
+
+	nsSwitch.Lock()
+	defer nsSwitch.Unlock()
+
+	defer func() {
+		if err = nsSwitch.SwitchByNetNSHandle(nsSwitch.NetNSHandle); err != nil {
+			panic(errors.Wrap(err, "failed to switch back to forwarder net NS").Error())
+		}
+		_ = nsSwitch.Close()
+	}()
 
 	clientNetNSHandle, err := utils.GetNSHandleFromInode(mech.GetNetNSInode())
 	if err != nil {
@@ -62,20 +67,15 @@ func (a *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	}
 	defer func() { _ = clientNetNSHandle.Close() }()
 
-	ifaceName := mech.GetParameters()[kernel.InterfaceNameKey]
-	if ifaceName == "" {
-		return nil, errors.New("Interface name is not found")
-	}
-
-	err = a.moveInterfaceToAnotherNamespace(ifaceName, forwarderNetNSHandle, clientNetNSHandle)
-	if err != nil {
+	ifaceName := mech.GetInterfaceName(request.GetConnection())
+	if err = a.moveInterfaceToAnotherNamespace(nsSwitch, ifaceName, nsSwitch.NetNSHandle, clientNetNSHandle); err != nil {
 		return nil, errors.Wrapf(err, "Failed to move network interface %s into the Client's namespace", ifaceName)
 	}
 	log.Entry(ctx).Infof("Moved network interface %s into the Client's namespace for connection %s", ifaceName, connID)
 
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
-		errMovingBack := a.moveInterfaceToAnotherNamespace(ifaceName, clientNetNSHandle, forwarderNetNSHandle)
+		errMovingBack := a.moveInterfaceToAnotherNamespace(nsSwitch, ifaceName, clientNetNSHandle, nsSwitch.NetNSHandle)
 		if errMovingBack != nil {
 			log.Entry(ctx).Infof("Failed to move network interface %s into the Forwarder's namespace for connection %s", ifaceName, connID)
 		}
@@ -87,15 +87,20 @@ func (a *injectServer) Request(ctx context.Context, request *networkservice.Netw
 func (a *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	mech := kernel.ToMechanism(conn.GetMechanism())
 
-	/* Lock the OS thread so we don't accidentally switch namespaces */
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	forwarderNetNSHandle, err := netns.Get()
+	nsSwitch, err := utils.NewNSSwitch()
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to obtain Forwarder's network namespace handle")
+		return nil, errors.Wrap(err, "failed to init net NS switch")
 	}
-	defer func() { _ = forwarderNetNSHandle.Close() }()
+
+	nsSwitch.Lock()
+	defer nsSwitch.Unlock()
+
+	defer func() {
+		if err = nsSwitch.SwitchByNetNSHandle(nsSwitch.NetNSHandle); err != nil {
+			panic(errors.Wrap(err, "failed to switch back to forwarder net NS").Error())
+		}
+		_ = nsSwitch.Close()
+	}()
 
 	clientNetNSHandle, err := utils.GetNSHandleFromInode(mech.GetNetNSInode())
 	if err != nil {
@@ -108,7 +113,7 @@ func (a *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 		return nil, errors.New("Interface name is not found")
 	}
 
-	err = a.moveInterfaceToAnotherNamespace(ifaceName, clientNetNSHandle, forwarderNetNSHandle)
+	err = a.moveInterfaceToAnotherNamespace(nsSwitch, ifaceName, clientNetNSHandle, nsSwitch.NetNSHandle)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Unable to move network interface %s into the Forwarder's namespace", ifaceName)
 	}
@@ -117,15 +122,26 @@ func (a *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 	return next.Server(ctx).Close(ctx, conn)
 }
 
-func (a *injectServer) moveInterfaceToAnotherNamespace(ifaceName string, fromNetNS, toNetNS netns.NsHandle) error {
-	link, err := sdkKernel.FindHostDevice("", ifaceName, fromNetNS)
-	if err != nil {
-		return err
+func (a *injectServer) moveInterfaceToAnotherNamespace(nsSwitch *utils.NSSwitch, ifName string, fromNetNS, toNetNS netns.NsHandle) error {
+	if err := nsSwitch.SwitchByNetNSHandle(fromNetNS); err != nil {
+		return errors.Wrapf(err, "failed to switch to net NS: %v", fromNetNS)
 	}
 
-	err = link.MoveToNetns(toNetNS)
+	link, err := netlink.LinkByName(ifName)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to move interface %s to another namespace", ifaceName)
+		return errors.Wrapf(err, "failed to get net interface: %v", ifName)
+	}
+
+	if err := netlink.LinkSetDown(link); err != nil {
+		return errors.Wrapf(err, "failed to set net interface down: %v", ifName)
+	}
+
+	if err := netlink.LinkSetNsFd(link, int(toNetNS)); err != nil {
+		return errors.Wrapf(err, "failed to move net interface to net NS: %v %v", ifName, toNetNS)
+	}
+
+	if err := netlink.LinkSetUp(link); err != nil {
+		return errors.Wrapf(err, "failed to set net interface up: %v", ifName)
 	}
 
 	return nil
