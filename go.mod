@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/golang/protobuf v1.4.2
-	github.com/networkservicemesh/api v0.0.0-20200626035416-b2c37e63dc22
+	github.com/networkservicemesh/api v0.0.0-20200915182332-e5aee3ba99ef
 	github.com/networkservicemesh/sdk v0.0.0-20200713165129-52bd2e34c31b
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
