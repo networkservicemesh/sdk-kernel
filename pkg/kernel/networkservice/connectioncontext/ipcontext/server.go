@@ -20,6 +20,7 @@ package ipcontext
 import (
 	"context"
 	"net"
+	"os"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -103,7 +104,7 @@ func setRoutes(routes []*networkservice.Route, ipAddr *netlink.Addr, link netlin
 				Mask: routeNet.Mask,
 			},
 			Src: ipAddr.IP,
-		}); err != nil {
+		}); err != nil && !os.IsExist(err) {
 			return errors.Wrapf(err, "failed to add route: %v", route.GetPrefix())
 		}
 	}
@@ -121,7 +122,7 @@ func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, link netlink.Link
 			State:        0x02, // netlink.NUD_REACHABLE
 			IP:           net.ParseIP(ipNeighbor.Ip),
 			HardwareAddr: macAddr,
-		}); err != nil {
+		}); err != nil && !os.IsExist(err) {
 			return errors.Wrapf(err, "failed to add IP neighbor: %v", ipNeighbor)
 		}
 	}
