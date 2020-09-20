@@ -24,12 +24,11 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/utils"
 )
 
 type ipContextServer struct{}
@@ -41,24 +40,6 @@ func NewServer() networkservice.NetworkServiceServer {
 
 func (s *ipContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
-		nsSwitch, err := utils.NewNSSwitch()
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to init net NS switch")
-		}
-		defer func() { _ = nsSwitch.Close() }()
-
-		nsSwitch.Lock()
-		defer nsSwitch.Unlock()
-
-		if err = nsSwitch.SwitchByNetNSInode(mech.GetNetNSInode()); err != nil {
-			return nil, errors.Wrapf(err, "failed to switch to the client net NS: %v", mech.GetNetNSInode())
-		}
-		defer func() {
-			if err = nsSwitch.SwitchByNetNSHandle(nsSwitch.NetNSHandle); err != nil {
-				panic(errors.Wrap(err, "failed to switch to the forwarder net NS").Error())
-			}
-		}()
-
 		ifName := mech.GetInterfaceName(request.GetConnection())
 		link, err := netlink.LinkByName(ifName)
 		if err != nil {
@@ -91,7 +72,7 @@ func (s *ipContextServer) Request(ctx context.Context, request *networkservice.N
 }
 
 func setIPAddr(ipAddr *netlink.Addr, link netlink.Link) error {
-	ipAddrs, err := netlink.AddrList(link, netlink.FAMILY_ALL)
+	ipAddrs, err := netlink.AddrList(link, unix.AF_UNSPEC) // netlink.FAMILY_ALL
 	if err != nil {
 		return errors.Wrapf(err, "failed to get the net interface IP addresses: %v", link.Attrs().Name)
 	}
@@ -137,7 +118,7 @@ func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, link netlink.Link
 		}
 		if err := netlink.NeighAdd(&netlink.Neigh{
 			LinkIndex:    link.Attrs().Index,
-			State:        netlink.NUD_REACHABLE,
+			State:        0x02, // netlink.NUD_REACHABLE
 			IP:           net.ParseIP(ipNeighbor.Ip),
 			HardwareAddr: macAddr,
 		}); err != nil {

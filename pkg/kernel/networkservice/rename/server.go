@@ -38,13 +38,14 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (s *renameServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-		mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
-		if ifName := mech.GetInterfaceName(request.GetConnection()); vfConfig.VFInterfaceName != ifName {
-			if err := renameLink(vfConfig.VFInterfaceName, ifName); err != nil {
-				return nil, err
+	if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
+		if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
+			if ifName := mech.GetInterfaceName(request.GetConnection()); vfConfig.VFInterfaceName != ifName {
+				if err := renameLink(vfConfig.VFInterfaceName, ifName); err != nil {
+					return nil, err
+				}
+				vfConfig.VFInterfaceName = ifName
 			}
-			vfConfig.VFInterfaceName = ifName
 		}
 	}
 	return next.Server(ctx).Request(ctx, request)
@@ -64,5 +65,5 @@ func renameLink(oldName, newName string) error {
 }
 
 func (s *renameServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	panic("implement me")
+	return next.Server(ctx).Close(ctx, conn)
 }

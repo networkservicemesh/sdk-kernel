@@ -91,15 +91,15 @@ func (a *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to init net NS switch")
 	}
+	defer func() { _ = nsSwitch.Close() }()
 
 	nsSwitch.Lock()
 	defer nsSwitch.Unlock()
 
 	defer func() {
 		if err = nsSwitch.SwitchByNetNSHandle(nsSwitch.NetNSHandle); err != nil {
-			panic(errors.Wrap(err, "failed to switch back to forwarder net NS").Error())
+			panic(errors.Wrap(err, "failed to switch back to the forwarder net NS").Error())
 		}
-		_ = nsSwitch.Close()
 	}()
 
 	clientNetNSHandle, err := utils.GetNSHandleFromInode(mech.GetNetNSInode())
@@ -132,16 +132,8 @@ func (a *injectServer) moveInterfaceToAnotherNamespace(nsSwitch *utils.NSSwitch,
 		return errors.Wrapf(err, "failed to get net interface: %v", ifName)
 	}
 
-	if err := netlink.LinkSetDown(link); err != nil {
-		return errors.Wrapf(err, "failed to set net interface down: %v", ifName)
-	}
-
 	if err := netlink.LinkSetNsFd(link, int(toNetNS)); err != nil {
 		return errors.Wrapf(err, "failed to move net interface to net NS: %v %v", ifName, toNetNS)
-	}
-
-	if err := netlink.LinkSetUp(link); err != nil {
-		return errors.Wrapf(err, "failed to set net interface up: %v", ifName)
 	}
 
 	return nil

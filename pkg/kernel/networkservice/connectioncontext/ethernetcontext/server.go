@@ -30,7 +30,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/utils"
 )
 
 type ethernetContextServer struct{}
@@ -53,7 +52,7 @@ func (s *ethernetContextServer) Request(ctx context.Context, request *networkser
 				return nil, err
 			}
 		} else if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
-			if err := configureNetInterface(mech.GetInterfaceName(request.GetConnection()), mech.GetNetNSInode(), macAddr, vlanTag); err != nil {
+			if err := configureNetInterface(mech.GetInterfaceName(request.GetConnection()), macAddr, vlanTag); err != nil {
 				return nil, err
 			}
 		}
@@ -80,25 +79,7 @@ func configureVirtualFunction(vfConfig *vfconfig.VFConfig, macAddr net.HardwareA
 	return nil
 }
 
-func configureNetInterface(ifName, netNSInode string, macAddr net.HardwareAddr, _ int) error {
-	nsSwitch, err := utils.NewNSSwitch()
-	if err != nil {
-		return errors.Wrap(err, "failed to init net NS switch")
-	}
-	defer func() { _ = nsSwitch.Close() }()
-
-	nsSwitch.Lock()
-	defer nsSwitch.Unlock()
-
-	if err = nsSwitch.SwitchByNetNSInode(netNSInode); err != nil {
-		return errors.Wrapf(err, "failed to switch to the client net NS: %v", netNSInode)
-	}
-	defer func() {
-		if err = nsSwitch.SwitchByNetNSHandle(nsSwitch.NetNSHandle); err != nil {
-			panic(errors.Wrap(err, "failed to switch to the forwarder net NS").Error())
-		}
-	}()
-
+func configureNetInterface(ifName string, macAddr net.HardwareAddr, _ int) error {
 	link, err := netlink.LinkByName(ifName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get network interface: %v", ifName)

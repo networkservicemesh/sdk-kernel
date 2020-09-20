@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -85,7 +86,7 @@ func (l *link) AddAddress(ip string) error {
 	}
 
 	// check if address is already assigned
-	current, err := netlink.AddrList(l.link, netlink.FAMILY_ALL)
+	current, err := netlink.AddrList(l.link, unix.AF_UNSPEC) // netlink.FAMILY_ALL
 	if err != nil {
 		return errors.Errorf("failed to get current IP address list %q: %s", ip, err)
 	}
