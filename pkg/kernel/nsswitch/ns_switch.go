@@ -14,7 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+// Package nsswitch contains tool to switch between net namespaces
+package nsswitch
 
 import (
 	"runtime"
@@ -22,11 +23,10 @@ import (
 	"github.com/vishvananda/netns"
 )
 
-// NSSwitch provides methods to switch between net namespaces
+// NSSwitch is a tool to switch between net namespaces
 type NSSwitch struct {
 	// NetNSHandle is a base net namespace handle
-	NetNSHandle  netns.NsHandle
-	netNSHandles []netns.NsHandle
+	NetNSHandle netns.NsHandle
 }
 
 // NewNSSwitch returns a new NSSwitch
@@ -43,28 +43,16 @@ func NewNSSwitch() (s *NSSwitch, err error) {
 	return s, nil
 }
 
-// SwitchByNetNSHandle switches net namespace by handle
-func (s *NSSwitch) SwitchByNetNSHandle(netNSHandle netns.NsHandle) error {
+// SwitchTo switches net namespace by handle
+func (s *NSSwitch) SwitchTo(netNSHandle netns.NsHandle) error {
 	currNetNSHandle, err := netns.Get()
 	if err != nil {
 		return err
 	}
-
 	if currNetNSHandle.Equal(netNSHandle) {
 		return nil
 	}
 	return netns.Set(netNSHandle)
-}
-
-// SwitchByNetNSInode switches net namespace by inode
-func (s *NSSwitch) SwitchByNetNSInode(netNSInode string) error {
-	netNSHandle, err := GetNSHandleFromInode(netNSInode)
-	if err != nil {
-		return err
-	}
-	s.netNSHandles = append(s.netNSHandles, netNSHandle)
-
-	return s.SwitchByNetNSHandle(netNSHandle)
 }
 
 // Lock locks OS thread
@@ -79,8 +67,5 @@ func (s *NSSwitch) Unlock() {
 
 // Close closes all handles opened by NSSwitch
 func (s *NSSwitch) Close() error {
-	for _, netNSHandle := range s.netNSHandles {
-		_ = netNSHandle.Close()
-	}
 	return s.NetNSHandle.Close()
 }

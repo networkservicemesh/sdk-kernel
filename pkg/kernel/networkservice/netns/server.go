@@ -21,12 +21,14 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
+	"github.com/vishvananda/netns"
+
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/pkg/errors"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/utils"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/nsswitch"
 )
 
 type netNSServer struct{}
@@ -58,7 +60,7 @@ func (s *netNSServer) Close(ctx context.Context, conn *networkservice.Connection
 
 func runInNetNS(mechanism *networkservice.Mechanism, runner func() (interface{}, error)) (interface{}, error) {
 	if mech := kernel.ToMechanism(mechanism); mech != nil {
-		nsSwitch, err := utils.NewNSSwitch()
+		nsSwitch, err := nsswitch.NewNSSwitch()
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to init NS switch")
 		}
@@ -67,11 +69,17 @@ func runInNetNS(mechanism *networkservice.Mechanism, runner func() (interface{},
 		nsSwitch.Lock()
 		defer nsSwitch.Unlock()
 
-		if err = nsSwitch.SwitchByNetNSInode(mech.GetNetNSInode()); err != nil {
-			return nil, errors.Wrapf(err, "failed to switch to the client net NS: %v", mech.GetNetNSInode())
+		clientNetNSHandle, err := netns.GetFromPath(mech.GetNetNSURL())
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to get client net NS: %v", mech.GetNetNSURL())
+		}
+		defer func() { _ = clientNetNSHandle.Close() }()
+
+		if err = nsSwitch.SwitchTo(clientNetNSHandle); err != nil {
+			return nil, errors.Wrapf(err, "failed to switch to the client net NS: %v", mech.GetNetNSURL())
 		}
 		defer func() {
-			if err = nsSwitch.SwitchByNetNSHandle(nsSwitch.NetNSHandle); err != nil {
+			if err = nsSwitch.SwitchTo(nsSwitch.NetNSHandle); err != nil {
 				panic(errors.Wrapf(err, "failed to switch to the forwarder net NS: %v", nsSwitch.NetNSHandle))
 			}
 		}()
