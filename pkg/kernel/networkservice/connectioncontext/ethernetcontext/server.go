@@ -39,20 +39,31 @@ func NewServer() networkservice.NetworkServiceServer {
 	return &ethernetContextServer{}
 }
 
-func (s *ethernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
+func (s *ethernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (conn *networkservice.Connection, err error) {
 	if ethernetContext := request.GetConnection().GetContext().GetEthernetContext(); ethernetContext != nil {
-		macAddr, err := net.ParseMAC(ethernetContext.GetSrcMac())
-		if err != nil {
-			return nil, errors.Wrapf(err, "invalid MAC address: %v", ethernetContext.GetSrcMac())
+		var macAddr net.HardwareAddr
+		var setMacAddr bool
+		if macAddrString := ethernetContext.GetSrcMac(); macAddrString != "" {
+			macAddr, err = net.ParseMAC(ethernetContext.GetSrcMac())
+			if err != nil {
+				return nil, errors.Wrapf(err, "invalid MAC address: %v", ethernetContext.GetSrcMac())
+			}
+			setMacAddr = true
 		}
+
 		vlanTag := int(ethernetContext.GetVlanTag())
+		var setVlanTag bool
+		if vlanTag != 0 {
+			setVlanTag = true
+		}
 
 		if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-			if err := configureVirtualFunction(vfConfig, macAddr, vlanTag); err != nil {
+			if err := configureVirtualFunction(vfConfig, setMacAddr, macAddr, setVlanTag, vlanTag); err != nil {
 				return nil, err
 			}
 		} else if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
-			if err := configureNetInterface(mech.GetInterfaceName(request.GetConnection()), macAddr, vlanTag); err != nil {
+			ifName := mech.GetInterfaceName(request.GetConnection())
+			if err := configureNetInterface(ifName, setMacAddr, macAddr, setVlanTag, vlanTag); err != nil {
 				return nil, err
 			}
 		}
@@ -60,17 +71,23 @@ func (s *ethernetContextServer) Request(ctx context.Context, request *networkser
 	return next.Server(ctx).Request(ctx, request)
 }
 
-func configureVirtualFunction(vfConfig *vfconfig.VFConfig, macAddr net.HardwareAddr, vlanTag int) error {
+func configureVirtualFunction(
+	vfConfig *vfconfig.VFConfig,
+	setMacAddr bool, macAddr net.HardwareAddr,
+	setVlanTag bool, vlanTag int,
+) error {
 	pfLink, err := netlink.LinkByName(vfConfig.PFInterfaceName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get PF network interface: %v", vfConfig.PFInterfaceName)
 	}
 
-	if err := netlink.LinkSetVfHardwareAddr(pfLink, vfConfig.VFNum, macAddr); err != nil {
-		return errors.Wrapf(err, "failed to set MAC address for the VF: %v", macAddr)
+	if setMacAddr {
+		if err := netlink.LinkSetVfHardwareAddr(pfLink, vfConfig.VFNum, macAddr); err != nil {
+			return errors.Wrapf(err, "failed to set MAC address for the VF: %v", macAddr)
+		}
 	}
 
-	if vlanTag != 0 {
+	if setVlanTag {
 		if err := netlink.LinkSetVfVlan(pfLink, vfConfig.VFNum, vlanTag); err != nil {
 			return errors.Wrapf(err, "failed to set VLAN for the VF: %v", vlanTag)
 		}
@@ -79,17 +96,25 @@ func configureVirtualFunction(vfConfig *vfconfig.VFConfig, macAddr net.HardwareA
 	return nil
 }
 
-func configureNetInterface(ifName string, macAddr net.HardwareAddr, _ int) error {
+func configureNetInterface(
+	ifName string,
+	setMacAddr bool, macAddr net.HardwareAddr,
+	_ /* setVlanTag */ bool, _ /* vlanTag */ int,
+) error {
 	link, err := netlink.LinkByName(ifName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get network interface: %v", ifName)
 	}
 
-	if err := netlink.LinkSetHardwareAddr(link, macAddr); err != nil {
-		return errors.Wrapf(err, "failed to set MAC address for the network interface: %v %v", ifName, macAddr)
+	if setMacAddr {
+		if err := netlink.LinkSetHardwareAddr(link, macAddr); err != nil {
+			return errors.Wrapf(err, "failed to set MAC address for the network interface: %v %v", ifName, macAddr)
+		}
 	}
 
-	// TODO: add VLAN for net interface
+	// if setVlanTag {
+	//     TODO: add VLAN for net interface
+	// }
 
 	return nil
 }
