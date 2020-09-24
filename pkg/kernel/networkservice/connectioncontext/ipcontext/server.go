@@ -23,13 +23,11 @@ import (
 	"os"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
-	"github.com/vishvananda/netlink"
-	"golang.org/x/sys/unix"
-
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/pkg/errors"
+	"github.com/vishvananda/netlink"
 )
 
 type ipContextServer struct{}
@@ -73,7 +71,7 @@ func (s *ipContextServer) Request(ctx context.Context, request *networkservice.N
 }
 
 func setIPAddr(ipAddr *netlink.Addr, link netlink.Link) error {
-	ipAddrs, err := netlink.AddrList(link, unix.AF_UNSPEC) // netlink.FAMILY_ALL
+	ipAddrs, err := netlink.AddrList(link, 0x0) // netlink.FAMILY_ALL (linux-specific constant)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get the net interface IP addresses: %v", link.Attrs().Name)
 	}
@@ -119,7 +117,7 @@ func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, link netlink.Link
 		}
 		if err := netlink.NeighAdd(&netlink.Neigh{
 			LinkIndex:    link.Attrs().Index,
-			State:        0x02, // netlink.NUD_REACHABLE
+			State:        0x02, // netlink.NUD_REACHABLE (linux-specific constant)
 			IP:           net.ParseIP(ipNeighbor.Ip),
 			HardwareAddr: macAddr,
 		}); err != nil && !os.IsExist(err) {
