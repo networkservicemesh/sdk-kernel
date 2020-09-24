@@ -66,9 +66,6 @@ func runInNetNS(mechanism *networkservice.Mechanism, runner func() (interface{},
 		}
 		defer func() { _ = nsSwitch.Close() }()
 
-		nsSwitch.Lock()
-		defer nsSwitch.Unlock()
-
 		clientNetNSHandle, err := netns.GetFromPath(mech.GetNetNSURL())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to get client net NS: %v", mech.GetNetNSURL())

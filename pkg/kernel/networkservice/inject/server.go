@@ -52,7 +52,6 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 	defer func() {
-		nsSwitch.Unlock()
 		_ = nsSwitch.Close()
 		_ = clientNetNSHandle.Close()
 	}()
@@ -84,7 +83,6 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 		return nil, err
 	}
 	defer func() {
-		nsSwitch.Unlock()
 		_ = nsSwitch.Close()
 		_ = clientNetNSHandle.Close()
 	}()
@@ -103,11 +101,8 @@ func initNetNSSwitchAndHandle(netNSURL string) (nsSwitch *nsswitch.NSSwitch, cli
 	if err != nil {
 		return nil, -1, errors.Wrap(err, "failed to init net NS switch")
 	}
-	nsSwitch.Lock()
-
 	defer func() {
 		if err != nil {
-			nsSwitch.Unlock()
 			_ = nsSwitch.Close()
 		}
 	}()

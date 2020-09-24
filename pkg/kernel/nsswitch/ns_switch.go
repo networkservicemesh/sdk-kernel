@@ -31,11 +31,10 @@ type NSSwitch struct {
 
 // NewNSSwitch returns a new NSSwitch
 func NewNSSwitch() (s *NSSwitch, err error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	s = &NSSwitch{}
-
-	s.Lock()
-	defer s.Unlock()
-
 	if s.NetNSHandle, err = netns.Get(); err != nil {
 		return nil, err
 	}
@@ -45,6 +44,9 @@ func NewNSSwitch() (s *NSSwitch, err error) {
 
 // SwitchTo switches net namespace by handle
 func (s *NSSwitch) SwitchTo(netNSHandle netns.NsHandle) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
 	currNetNSHandle, err := netns.Get()
 	if err != nil {
 		return err
@@ -55,17 +57,12 @@ func (s *NSSwitch) SwitchTo(netNSHandle netns.NsHandle) error {
 	return netns.Set(netNSHandle)
 }
 
-// Lock locks OS thread
-func (s *NSSwitch) Lock() {
-	runtime.LockOSThread()
-}
-
-// Unlock unlocks OS thread
-func (s *NSSwitch) Unlock() {
-	runtime.UnlockOSThread()
-}
-
-// Close closes all handles opened by NSSwitch
+// Close closes the handle opened by NSSwitch
 func (s *NSSwitch) Close() error {
-	return s.NetNSHandle.Close()
+	if err := s.NetNSHandle.Close(); err != nil {
+		return err
+	}
+	s.NetNSHandle = -1
+
+	return nil
 }
