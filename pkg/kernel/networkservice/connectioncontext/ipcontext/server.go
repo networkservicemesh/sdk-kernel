@@ -23,11 +23,14 @@ import (
 	"os"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	kernelmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
 type ipContextServer struct{}
@@ -38,7 +41,7 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (s *ipContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
+	if mech := kernelmech.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
 		ifName := mech.GetInterfaceName(request.GetConnection())
 		link, err := netlink.LinkByName(ifName)
 		if err != nil {
@@ -71,7 +74,7 @@ func (s *ipContextServer) Request(ctx context.Context, request *networkservice.N
 }
 
 func setIPAddr(ipAddr *netlink.Addr, link netlink.Link) error {
-	ipAddrs, err := netlink.AddrList(link, 0x0) // netlink.FAMILY_ALL (linux-specific constant)
+	ipAddrs, err := netlink.AddrList(link, kernel.FamilyAll)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get the net interface IP addresses: %v", link.Attrs().Name)
 	}
@@ -117,7 +120,7 @@ func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, link netlink.Link
 		}
 		if err := netlink.NeighAdd(&netlink.Neigh{
 			LinkIndex:    link.Attrs().Index,
-			State:        0x02, // netlink.NUD_REACHABLE (linux-specific constant)
+			State:        kernel.NudReachable,
 			IP:           net.ParseIP(ipNeighbor.Ip),
 			HardwareAddr: macAddr,
 		}); err != nil && !os.IsExist(err) {

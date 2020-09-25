@@ -84,7 +84,7 @@ func (l *link) AddAddress(ip string) error {
 	}
 
 	// check if address is already assigned
-	current, err := netlink.AddrList(l.link, 0x0) // netlink.FAMILY_ALL (linux-specific constant)
+	current, err := netlink.AddrList(l.link, FamilyAll)
 	if err != nil {
 		return errors.Errorf("failed to get current IP address list %q: %s", ip, err)
 	}
