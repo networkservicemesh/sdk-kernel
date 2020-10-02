@@ -4,10 +4,13 @@ go 1.13
 
 require (
 	github.com/golang/protobuf v1.4.2
-	github.com/networkservicemesh/api v0.0.0-20200915182332-e5aee3ba99ef
-	github.com/networkservicemesh/sdk v0.0.0-20200713165129-52bd2e34c31b
+	github.com/networkservicemesh/api v0.0.0-20201001183932-93ee44ca6fc4
+	github.com/networkservicemesh/sdk v0.0.0-20201002144838-d5972d9e3391
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vishvananda/netns v0.0.0-20200520041808-52d707b772fe
+	golang.org/x/net v0.0.0-20200602114024-627f9648deb9 // indirect
+	golang.org/x/text v0.3.2 // indirect
+	google.golang.org/genproto v0.0.0-20200615140333-fd031eab31e7 // indirect
 )
