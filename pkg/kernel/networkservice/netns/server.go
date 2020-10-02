@@ -76,7 +76,7 @@ func runInNetNS(mechanism *networkservice.Mechanism, runner func() (interface{},
 			return nil, errors.Wrapf(err, "failed to switch to the client net NS: %v", mech.GetNetNSURL())
 		}
 		defer func() {
-			if err = nsSwitch.SwitchTo(nsSwitch.NetNSHandle); err != nil {
+			if err = nsSwitch.SwitchBack(); err != nil {
 				panic(errors.Wrapf(err, "failed to switch to the forwarder net NS: %v", nsSwitch.NetNSHandle))
 			}
 		}()

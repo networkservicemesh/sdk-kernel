@@ -27,6 +27,7 @@ import (
 type NSSwitch struct {
 	// NetNSHandle is a base net namespace handle
 	NetNSHandle netns.NsHandle
+	switchCount int
 }
 
 // NewNSSwitch returns a new NSSwitch
@@ -45,16 +46,40 @@ func NewNSSwitch() (s *NSSwitch, err error) {
 // SwitchTo switches net namespace by handle
 func (s *NSSwitch) SwitchTo(netNSHandle netns.NsHandle) error {
 	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
 
 	currNetNSHandle, err := netns.Get()
 	if err != nil {
+		runtime.UnlockOSThread()
 		return err
 	}
-	if currNetNSHandle.Equal(netNSHandle) {
+
+	if !currNetNSHandle.Equal(netNSHandle) {
+		if err = netns.Set(netNSHandle); err != nil {
+			runtime.UnlockOSThread()
+			return err
+		}
+	}
+	s.switchCount++
+
+	return nil
+}
+
+// SwitchBack switches net namespace to base
+func (s *NSSwitch) SwitchBack() error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	if s.switchCount == 0 {
 		return nil
 	}
-	return netns.Set(netNSHandle)
+
+	err := s.SwitchTo(s.NetNSHandle)
+
+	for ; s.switchCount > 0; s.switchCount-- {
+		runtime.UnlockOSThread()
+	}
+
+	return err
 }
 
 // Close closes the handle opened by NSSwitch

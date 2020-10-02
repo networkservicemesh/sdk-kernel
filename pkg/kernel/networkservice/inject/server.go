@@ -101,14 +101,10 @@ func initNetNSSwitchAndHandle(netNSURL string) (nsSwitch *nsswitch.NSSwitch, cli
 	if err != nil {
 		return nil, -1, errors.Wrap(err, "failed to init net NS switch")
 	}
-	defer func() {
-		if err != nil {
-			_ = nsSwitch.Close()
-		}
-	}()
 
 	clientNetNSHandle, err = netns.GetFromPath(netNSURL)
 	if err != nil {
+		_ = nsSwitch.Close()
 		return nil, -1, errors.Wrapf(err, "failed to obtain Client's network namespace handle")
 	}
 
@@ -120,7 +116,7 @@ func moveInterfaceToAnotherNamespace(nsSwitch *nsswitch.NSSwitch, ifName string,
 		return errors.Wrapf(err, "failed to switch to net NS: %v", fromNetNS)
 	}
 	defer func() {
-		if err := nsSwitch.SwitchTo(nsSwitch.NetNSHandle); err != nil {
+		if err := nsSwitch.SwitchBack(); err != nil {
 			panic(errors.Wrap(err, "failed to switch back to the forwarder net NS").Error())
 		}
 	}()
