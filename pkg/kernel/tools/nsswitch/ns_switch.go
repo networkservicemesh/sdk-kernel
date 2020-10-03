@@ -20,6 +20,7 @@ package nsswitch
 import (
 	"runtime"
 
+	"github.com/pkg/errors"
 	"github.com/vishvananda/netns"
 )
 
@@ -27,7 +28,6 @@ import (
 type NSSwitch struct {
 	// NetNSHandle is a base net namespace handle
 	NetNSHandle netns.NsHandle
-	switchCount int
 }
 
 // NewNSSwitch returns a new NSSwitch
@@ -43,43 +43,46 @@ func NewNSSwitch() (s *NSSwitch, err error) {
 	return s, nil
 }
 
-// SwitchTo switches net namespace by handle
-func (s *NSSwitch) SwitchTo(netNSHandle netns.NsHandle) error {
-	runtime.LockOSThread()
-
-	currNetNSHandle, err := netns.Get()
+// NewNSSwitchAndHandle returns a new NSSwitch and a net NS handle from the given URL
+func NewNSSwitchAndHandle(netNSURL string) (nsSwitch *NSSwitch, netNSHandle netns.NsHandle, err error) {
+	nsSwitch, err = NewNSSwitch()
 	if err != nil {
-		runtime.UnlockOSThread()
-		return err
+		return nil, -1, errors.Wrap(err, "failed to init net NS switch")
 	}
 
-	if !currNetNSHandle.Equal(netNSHandle) {
-		if err = netns.Set(netNSHandle); err != nil {
-			runtime.UnlockOSThread()
-			return err
-		}
+	netNSHandle, err = netns.GetFromPath(netNSURL)
+	if err != nil {
+		_ = nsSwitch.Close()
+		return nil, -1, errors.Wrapf(err, "failed to obtain network NS handle")
 	}
-	s.switchCount++
 
-	return nil
+	return nsSwitch, netNSHandle, nil
 }
 
-// SwitchBack switches net namespace to base
-func (s *NSSwitch) SwitchBack() error {
+// RunIn runs runner in the given net NS
+func (s *NSSwitch) RunIn(netNSHandle netns.NsHandle, runner func() error) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	if s.switchCount == 0 {
-		return nil
+	switch currNetNSHandle, err := netns.Get(); {
+	case err != nil:
+		return err
+	case !currNetNSHandle.Equal(s.NetNSHandle):
+		return errors.Errorf("current net NS is not the switch net NS: %v != %v", netNSHandle, s.NetNSHandle)
 	}
 
-	err := s.SwitchTo(s.NetNSHandle)
-
-	for ; s.switchCount > 0; s.switchCount-- {
-		runtime.UnlockOSThread()
+	if !netNSHandle.Equal(s.NetNSHandle) {
+		if err := netns.Set(netNSHandle); err != nil {
+			return errors.Wrapf(err, "failed to switch to the runner net NS: %v", netNSHandle)
+		}
+		defer func() {
+			if err := netns.Set(s.NetNSHandle); err != nil {
+				panic(errors.Wrapf(err, "failed to switch back to the switch net NS: %v", s.NetNSHandle).Error())
+			}
+		}()
 	}
 
-	return err
+	return runner()
 }
 
 // Close closes the handle opened by NSSwitch

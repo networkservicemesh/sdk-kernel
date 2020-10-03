@@ -21,14 +21,13 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
 	"github.com/vishvananda/netns"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/nsswitch"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nsswitch"
 )
 
 type netNSServer struct{}
@@ -38,48 +37,48 @@ func NewServer() networkservice.NetworkServiceServer {
 	return &netNSServer{}
 }
 
-func (s *netNSServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	rv, err := runInNetNS(request.GetConnection().GetMechanism(), func() (interface{}, error) {
-		return next.Server(ctx).Request(ctx, request)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return rv.(*networkservice.Connection), nil
-}
-
-func (s *netNSServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	rv, err := runInNetNS(conn.GetMechanism(), func() (interface{}, error) {
-		return next.Server(ctx).Close(ctx, conn)
-	})
-	if err != nil {
-		return nil, err
-	}
-	return rv.(*empty.Empty), nil
-}
-
-func runInNetNS(mechanism *networkservice.Mechanism, runner func() (interface{}, error)) (interface{}, error) {
-	if mech := kernel.ToMechanism(mechanism); mech != nil {
-		nsSwitch, err := nsswitch.NewNSSwitch()
+func (s *netNSServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (conn *networkservice.Connection, err error) {
+	if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
+		var nsSwitch *nsswitch.NSSwitch
+		var clientNetNSHandle netns.NsHandle
+		nsSwitch, clientNetNSHandle, err = nsswitch.NewNSSwitchAndHandle(mech.GetNetNSURL())
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to init NS switch")
-		}
-		defer func() { _ = nsSwitch.Close() }()
-
-		clientNetNSHandle, err := netns.GetFromPath(mech.GetNetNSURL())
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get client net NS: %v", mech.GetNetNSURL())
-		}
-		defer func() { _ = clientNetNSHandle.Close() }()
-
-		if err = nsSwitch.SwitchTo(clientNetNSHandle); err != nil {
-			return nil, errors.Wrapf(err, "failed to switch to the client net NS: %v", mech.GetNetNSURL())
+			return nil, err
 		}
 		defer func() {
-			if err = nsSwitch.SwitchBack(); err != nil {
-				panic(errors.Wrapf(err, "failed to switch to the forwarder net NS: %v", nsSwitch.NetNSHandle))
-			}
+			_ = nsSwitch.Close()
+			_ = clientNetNSHandle.Close()
 		}()
+
+		err = nsSwitch.RunIn(clientNetNSHandle, func() error {
+			conn, err = next.Server(ctx).Request(ctx, request)
+			return err
+		})
+	} else {
+		conn, err = next.Server(ctx).Request(ctx, request)
 	}
-	return runner()
+	return conn, err
+}
+
+func (s *netNSServer) Close(ctx context.Context, conn *networkservice.Connection) (_ *empty.Empty, err error) {
+	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
+		var nsSwitch *nsswitch.NSSwitch
+		var clientNetNSHandle netns.NsHandle
+		nsSwitch, clientNetNSHandle, err = nsswitch.NewNSSwitchAndHandle(mech.GetNetNSURL())
+		if err != nil {
+			return nil, err
+		}
+		defer func() {
+			_ = nsSwitch.Close()
+			_ = clientNetNSHandle.Close()
+		}()
+
+		err = nsSwitch.RunIn(clientNetNSHandle, func() error {
+			_, err = next.Server(ctx).Close(ctx, conn)
+			return err
+		})
+	} else {
+		_, err = next.Server(ctx).Close(ctx, conn)
+	}
+	return &empty.Empty{}, err
 }
