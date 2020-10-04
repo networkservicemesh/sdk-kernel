@@ -108,8 +108,8 @@ github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OS
 github.com/nats-io/stan.go v0.6.0/go.mod h1:eIcD5bi3pqbHT/xIIvXMwvzXYElgouBvaVRftaE+eac=
 github.com/networkservicemesh/api v0.0.0-20201001183932-93ee44ca6fc4 h1:ei9xh6O9yq8n/Jw0CpyqU6VVmamPLpm/DUAc/JSof0M=
 github.com/networkservicemesh/api v0.0.0-20201001183932-93ee44ca6fc4/go.mod h1:6hH0TfujZVin9W/6rWY7JnmNBNRvUrgXhr1aWyKuQKI=
-github.com/networkservicemesh/sdk v0.0.0-20201004173446-a2f28ff198f2 h1:7b0NR3nXOCj8e6fZ21ve1E5WT42R2Ky7CZqkEoUlg6w=
-github.com/networkservicemesh/sdk v0.0.0-20201004173446-a2f28ff198f2/go.mod h1:Aa+l2OPV7uKF0mOkVsRMTIcu27/tGOre9HwktUug3RA=
+github.com/networkservicemesh/sdk v0.0.0-20201004193320-568d00165341 h1:ybVcoLYcV9GmBLhEmUrKceBl61NZ4YBM4XdpOfuxe4I=
+github.com/networkservicemesh/sdk v0.0.0-20201004193320-568d00165341/go.mod h1:Aa+l2OPV7uKF0mOkVsRMTIcu27/tGOre9HwktUug3RA=
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/open-policy-agent/opa v0.16.1/go.mod h1:P0xUE/GQAAgnvV537GzA0Ikw4+icPELRT327QJPkaKY=
 github.com/opentracing/opentracing-go v1.1.0 h1:pWlfV3Bxv7k65HYwkikxat0+s3pV4bsqf19k25Ur8rU=
