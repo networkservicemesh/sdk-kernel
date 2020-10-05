@@ -18,6 +18,7 @@
 package nsswitch
 
 import (
+	"net/url"
 	"runtime"
 
 	"github.com/pkg/errors"
@@ -44,13 +45,18 @@ func NewNSSwitch() (s *NSSwitch, err error) {
 }
 
 // NewNSSwitchAndHandle returns a new NSSwitch and a net NS handle from the given URL
-func NewNSSwitchAndHandle(netNSURL string) (nsSwitch *NSSwitch, netNSHandle netns.NsHandle, err error) {
+func NewNSSwitchAndHandle(netNSURLString string) (nsSwitch *NSSwitch, netNSHandle netns.NsHandle, err error) {
+	netNSURL, err := url.Parse(netNSURLString)
+	if err != nil || netNSURL.Scheme != "file" {
+		return nil, -1, errors.Wrapf(err, "invalid url: %v", netNSURLString)
+	}
+
 	nsSwitch, err = NewNSSwitch()
 	if err != nil {
 		return nil, -1, errors.Wrap(err, "failed to init net NS switch")
 	}
 
-	netNSHandle, err = netns.GetFromPath(netNSURL)
+	netNSHandle, err = netns.GetFromPath(netNSURL.Path)
 	if err != nil {
 		_ = nsSwitch.Close()
 		return nil, -1, errors.Wrapf(err, "failed to obtain network NS handle")
