@@ -30,6 +30,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nsswitch"
 )
 
@@ -47,14 +48,18 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	connID := request.GetConnection().GetId()
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
 
-	nsSwitch, clientNetNSHandle, err := nsswitch.NewNSSwitchAndHandle(mech.GetNetNSURL())
+	nsSwitch, err := nsswitch.NewNSSwitch()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = nsSwitch.Close()
-		_ = clientNetNSHandle.Close()
-	}()
+	defer func() { _ = nsSwitch.Close() }()
+
+	var clientNetNSHandle netns.NsHandle
+	clientNetNSHandle, err = nshandle.FromURL(mech.GetNetNSURL())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = clientNetNSHandle.Close() }()
 
 	ifName := mech.GetInterfaceName(request.GetConnection())
 	err = moveInterfaceToAnotherNamespace(nsSwitch, ifName, nsSwitch.NetNSHandle, clientNetNSHandle)
@@ -79,14 +84,18 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 
 	mech := kernel.ToMechanism(conn.GetMechanism())
 
-	nsSwitch, clientNetNSHandle, err := nsswitch.NewNSSwitchAndHandle(mech.GetNetNSURL())
+	nsSwitch, err := nsswitch.NewNSSwitch()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = nsSwitch.Close()
-		_ = clientNetNSHandle.Close()
-	}()
+	defer func() { _ = nsSwitch.Close() }()
+
+	var clientNetNSHandle netns.NsHandle
+	clientNetNSHandle, err = nshandle.FromURL(mech.GetNetNSURL())
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = clientNetNSHandle.Close() }()
 
 	ifName := mech.GetInterfaceName(conn)
 	err = moveInterfaceToAnotherNamespace(nsSwitch, ifName, clientNetNSHandle, nsSwitch.NetNSHandle)
