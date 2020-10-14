@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/golang/protobuf v1.4.2
 	github.com/networkservicemesh/api v0.0.0-20201013012241-a68bd4a32b7e
-	github.com/networkservicemesh/sdk v0.0.0-20201013064730-52294d69379f
+	github.com/networkservicemesh/sdk v0.0.0-20201014074502-4fbf18e8e74b
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/vishvananda/netlink v1.1.0
