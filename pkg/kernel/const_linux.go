@@ -14,21 +14,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package connectioncontext provides chain element for setup link connection properties
-package connectioncontext
+package kernel
 
 import (
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
-
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontext/ethernetcontext"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontext/ipcontext"
+	"github.com/vishvananda/netlink"
 )
 
-// NewServer returns connection context server chain element
-func NewServer() networkservice.NetworkServiceServer {
-	return chain.NewNetworkServiceServer(
-		ethernetcontext.NewServer(),
-		ipcontext.NewServer(),
-	)
-}
+const (
+	// FamilyAll is netlink.FAMILY_ALL
+	FamilyAll = netlink.FAMILY_ALL
+	// NudReachable is netlink.NUD_REACHABLE
+	NudReachable = netlink.NUD_REACHABLE
+)
