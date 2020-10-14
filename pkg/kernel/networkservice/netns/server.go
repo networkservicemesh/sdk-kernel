@@ -28,7 +28,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nsswitch"
 )
 
 type netNSServer struct{}
@@ -40,21 +39,21 @@ func NewServer() networkservice.NetworkServiceServer {
 
 func (s *netNSServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (conn *networkservice.Connection, err error) {
 	if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
-		var nsSwitch *nsswitch.NSSwitch
-		nsSwitch, err = nsswitch.NewNSSwitch()
+		var forwarderNetNS netns.NsHandle
+		forwarderNetNS, err = nshandle.Current()
 		if err != nil {
 			return nil, err
 		}
-		defer func() { _ = nsSwitch.Close() }()
+		defer func() { _ = forwarderNetNS.Close() }()
 
-		var clientNetNSHandle netns.NsHandle
-		clientNetNSHandle, err = nshandle.FromURL(mech.GetNetNSURL())
+		var clientNetNS netns.NsHandle
+		clientNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
 		if err != nil {
 			return nil, err
 		}
-		defer func() { _ = clientNetNSHandle.Close() }()
+		defer func() { _ = clientNetNS.Close() }()
 
-		err = nsSwitch.RunIn(clientNetNSHandle, func() error {
+		err = nshandle.RunIn(forwarderNetNS, clientNetNS, func() error {
 			conn, err = next.Server(ctx).Request(ctx, request)
 			return err
 		})
@@ -66,21 +65,21 @@ func (s *netNSServer) Request(ctx context.Context, request *networkservice.Netwo
 
 func (s *netNSServer) Close(ctx context.Context, conn *networkservice.Connection) (_ *empty.Empty, err error) {
 	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
-		var nsSwitch *nsswitch.NSSwitch
-		nsSwitch, err = nsswitch.NewNSSwitch()
+		var forwarderNetNS netns.NsHandle
+		forwarderNetNS, err = nshandle.Current()
 		if err != nil {
 			return nil, err
 		}
-		defer func() { _ = nsSwitch.Close() }()
+		defer func() { _ = forwarderNetNS.Close() }()
 
-		var clientNetNSHandle netns.NsHandle
-		clientNetNSHandle, err = nshandle.FromURL(mech.GetNetNSURL())
+		var clientNetNS netns.NsHandle
+		clientNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
 		if err != nil {
 			return nil, err
 		}
-		defer func() { _ = clientNetNSHandle.Close() }()
+		defer func() { _ = clientNetNS.Close() }()
 
-		err = nsSwitch.RunIn(clientNetNSHandle, func() error {
+		err = nshandle.RunIn(forwarderNetNS, clientNetNS, func() error {
 			_, err = next.Server(ctx).Close(ctx, conn)
 			return err
 		})

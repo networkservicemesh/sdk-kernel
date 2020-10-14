@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nsswitch_test
+package nshandle_test
 
 import (
 	"runtime"
@@ -25,7 +25,7 @@ import (
 	"github.com/vishvananda/netns"
 	"go.uber.org/goleak"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nsswitch"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
 const (
@@ -36,12 +36,12 @@ const (
 	notEqualFormat = "Should not be: %#v\n"
 )
 
-func TestNSSwitch_RunIn(t *testing.T) {
+func TestNSHandle_RunIn(t *testing.T) {
 	goleak.VerifyNone(t)
 
-	baseHandle, err := netns.Get()
+	current, err := nshandle.Current()
 	require.NoError(t, err)
-	defer func() { _ = baseHandle.Close() }()
+	defer func() { _ = current.Close() }()
 
 	wg := sync.WaitGroup{}
 	wg.Add(concurrentCount)
@@ -50,24 +50,18 @@ func TestNSSwitch_RunIn(t *testing.T) {
 		go func() {
 			defer wg.Done()
 
-			nsSwitch, err := nsswitch.NewNSSwitch()
-			require.NoError(t, err)
-			defer func() { _ = nsSwitch.Close() }()
+			target := newNSHandle(t)
+			defer func() { _ = target.Close() }()
 
-			require.True(t, baseHandle.Equal(nsSwitch.NetNSHandle), equalFormat, baseHandle, nsSwitch.NetNSHandle)
+			require.False(t, current.Equal(target), notEqualFormat, current, target)
 
-			newHandle := newNSHandle(t)
-			defer func() { _ = newHandle.Close() }()
-
-			require.False(t, baseHandle.Equal(newHandle), notEqualFormat, baseHandle, newHandle)
-
-			err = nsSwitch.RunIn(newHandle, func() error {
+			err = nshandle.RunIn(current, target, func() error {
 				var handle netns.NsHandle
 				handle, err = netns.Get()
 				require.NoError(t, err)
 				defer func() { _ = handle.Close() }()
 
-				require.True(t, newHandle.Equal(handle), equalFormat, newHandle, handle)
+				require.True(t, target.Equal(handle), equalFormat, target, handle)
 
 				return nil
 			})

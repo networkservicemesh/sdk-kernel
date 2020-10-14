@@ -19,10 +19,19 @@ package nshandle
 
 import (
 	"net/url"
+	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netns"
 )
+
+// Current creates net NS handle for the current net NS
+func Current() (handle netns.NsHandle, err error) {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	return netns.Get()
+}
 
 // FromURL creates net NS handle by file://path URL
 func FromURL(urlString string) (handle netns.NsHandle, err error) {
@@ -38,4 +47,30 @@ func FromURL(urlString string) (handle netns.NsHandle, err error) {
 	}
 
 	return handle, nil
+}
+
+// RunIn runs runner in the given net NS
+func RunIn(current, target netns.NsHandle, runner func() error) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	switch curr, err := netns.Get(); {
+	case err != nil:
+		return err
+	case !curr.Equal(current):
+		return errors.Errorf("current net NS is not the given current net NS: %v != %v", curr, current)
+	}
+
+	if !target.Equal(current) {
+		if err := netns.Set(target); err != nil {
+			return errors.Wrapf(err, "failed to switch to the target net NS: %v", target)
+		}
+		defer func() {
+			if err := netns.Set(current); err != nil {
+				panic(errors.Wrapf(err, "failed to switch back to the current net NS: %v", current).Error())
+			}
+		}()
+	}
+
+	return runner()
 }

@@ -31,7 +31,6 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nsswitch"
 )
 
 type injectServer struct{}
@@ -48,21 +47,21 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	connID := request.GetConnection().GetId()
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
 
-	nsSwitch, err := nsswitch.NewNSSwitch()
+	forwarderNetNS, err := nshandle.Current()
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = nsSwitch.Close() }()
+	defer func() { _ = forwarderNetNS.Close() }()
 
-	var clientNetNSHandle netns.NsHandle
-	clientNetNSHandle, err = nshandle.FromURL(mech.GetNetNSURL())
+	var clientNetNS netns.NsHandle
+	clientNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = clientNetNSHandle.Close() }()
+	defer func() { _ = clientNetNS.Close() }()
 
 	ifName := mech.GetInterfaceName(request.GetConnection())
-	err = moveInterfaceToAnotherNamespace(nsSwitch, ifName, nsSwitch.NetNSHandle, clientNetNSHandle)
+	err = moveInterfaceToAnotherNamespace(ifName, forwarderNetNS, clientNetNS)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +69,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
-		if errMovingBack := moveInterfaceToAnotherNamespace(nsSwitch, ifName, clientNetNSHandle, nsSwitch.NetNSHandle); errMovingBack != nil {
+		if errMovingBack := moveInterfaceToAnotherNamespace(ifName, clientNetNS, forwarderNetNS); errMovingBack != nil {
 			logEntry.Warnf("failed to move network interface %s into the Forwarder's namespace for connection %s", ifName, connID)
 		} else {
 			logEntry.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, connID)
@@ -84,21 +83,21 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 
 	mech := kernel.ToMechanism(conn.GetMechanism())
 
-	nsSwitch, err := nsswitch.NewNSSwitch()
+	forwarderNetNS, err := nshandle.Current()
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = nsSwitch.Close() }()
+	defer func() { _ = forwarderNetNS.Close() }()
 
-	var clientNetNSHandle netns.NsHandle
-	clientNetNSHandle, err = nshandle.FromURL(mech.GetNetNSURL())
+	var clientNetNS netns.NsHandle
+	clientNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = clientNetNSHandle.Close() }()
+	defer func() { _ = clientNetNS.Close() }()
 
 	ifName := mech.GetInterfaceName(conn)
-	err = moveInterfaceToAnotherNamespace(nsSwitch, ifName, clientNetNSHandle, nsSwitch.NetNSHandle)
+	err = moveInterfaceToAnotherNamespace(ifName, clientNetNS, forwarderNetNS)
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +106,8 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 	return next.Server(ctx).Close(ctx, conn)
 }
 
-func moveInterfaceToAnotherNamespace(nsSwitch *nsswitch.NSSwitch, ifName string, fromNetNS, toNetNS netns.NsHandle) error {
-	return nsSwitch.RunIn(fromNetNS, func() error {
+func moveInterfaceToAnotherNamespace(ifName string, fromNetNS, toNetNS netns.NsHandle) error {
+	return nshandle.RunIn(fromNetNS, toNetNS, func() error {
 		link, err := netlink.LinkByName(ifName)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get net interface: %v", ifName)
