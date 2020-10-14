@@ -39,8 +39,8 @@ const (
 func TestNSHandle_RunIn(t *testing.T) {
 	goleak.VerifyNone(t)
 
-	current, err := nshandle.Current()
-	require.NoError(t, err)
+	current, currErr := nshandle.Current()
+	require.NoError(t, currErr)
 	defer func() { _ = current.Close() }()
 
 	wg := sync.WaitGroup{}
@@ -55,9 +55,8 @@ func TestNSHandle_RunIn(t *testing.T) {
 
 			require.False(t, current.Equal(target), notEqualFormat, current, target)
 
-			err = nshandle.RunIn(current, target, func() error {
-				var handle netns.NsHandle
-				handle, err = netns.Get()
+			err := nshandle.RunIn(current, target, func() error {
+				handle, err := netns.Get()
 				require.NoError(t, err)
 				defer func() { _ = handle.Close() }()
 
