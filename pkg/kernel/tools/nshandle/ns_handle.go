@@ -54,15 +54,18 @@ func RunIn(current, target netns.NsHandle, runner func() error) error {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	switch curr, err := netns.Get(); {
-	case err != nil:
+	curr, err := netns.Get()
+	if err != nil {
 		return err
-	case !curr.Equal(current):
+	}
+	defer func() { _ = curr.Close() }()
+
+	if !curr.Equal(current) {
 		return errors.Errorf("current net NS is not the given current net NS: %v != %v", curr, current)
 	}
 
 	if !target.Equal(current) {
-		if err := netns.Set(target); err != nil {
+		if err = netns.Set(target); err != nil {
 			return errors.Wrapf(err, "failed to switch to the target net NS: %v", target)
 		}
 		defer func() {
