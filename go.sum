@@ -22,10 +22,9 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
-github.com/edwarnicke/exechelper v1.0.1/go.mod h1:/T271jtNX/ND4De6pa2aRy2+8sNtyCDB1A2pp4M+fUs=
+github.com/edwarnicke/exechelper v1.0.2/go.mod h1:/T271jtNX/ND4De6pa2aRy2+8sNtyCDB1A2pp4M+fUs=
 github.com/edwarnicke/grpcfd v0.0.0-20200920223154-d5b6e1f19bd0/go.mod h1:rHihB9YvNMixz8rS+ZbwosI2kj65VLkeyYAI2M+/cGA=
 github.com/edwarnicke/serialize v0.0.0-20200705214914-ebc43080eecf/go.mod h1:XvbCO/QGsl3X8RzjBMoRpkm54FIAZH5ChK2j+aox7pw=
-github.com/edwarnicke/serialize v1.0.2-0.20201017171944-cf1114ca2f6f/go.mod h1:bJ8sBYQExvfyOBt41jVY2soYHCe6q1O1siZDhyjp/CQ=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/go-control-plane v0.9.4/go.mod h1:6rpuAdCZL397s3pYoYcLgu1mIlRU8Am5FuJP05cCM98=
@@ -111,8 +110,8 @@ github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OS
 github.com/nats-io/stan.go v0.6.0/go.mod h1:eIcD5bi3pqbHT/xIIvXMwvzXYElgouBvaVRftaE+eac=
 github.com/networkservicemesh/api v0.0.0-20201014184533-ca42a07d7e15 h1:WUoouahed3mQZLc51mkIhqTEIp/zUO3pwqIKR/sYkms=
 github.com/networkservicemesh/api v0.0.0-20201014184533-ca42a07d7e15/go.mod h1:qvxdY1Zt4QTtiG+uH1XmjpegeHjlt5Jj4A8iK55iJPI=
-github.com/networkservicemesh/sdk v0.0.0-20201018171716-2c44f34ccf05 h1:wpuHz4BuEATocH0m3FlJ3GF/iGMY8hApj4g4tiSr9sU=
-github.com/networkservicemesh/sdk v0.0.0-20201018171716-2c44f34ccf05/go.mod h1:Qy920uKCz0xldVL6alF/m5hGT/d2VPWgGk7nEkThFuQ=
+github.com/networkservicemesh/sdk v0.0.0-20201018180237-f46b09458475 h1:XnGHW0He9FX4bNiR6I8UNKroYApUM4Oc6a/EOmD0tUo=
+github.com/networkservicemesh/sdk v0.0.0-20201018180237-f46b09458475/go.mod h1:FMsEz1YFe3peOr4LpgP8B5ov4/b+mJScqfvBiZTeSAw=
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
 github.com/open-policy-agent/opa v0.16.1/go.mod h1:P0xUE/GQAAgnvV537GzA0Ikw4+icPELRT327QJPkaKY=
 github.com/opentracing/opentracing-go v1.1.0 h1:pWlfV3Bxv7k65HYwkikxat0+s3pV4bsqf19k25Ur8rU=
