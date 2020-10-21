@@ -146,8 +146,6 @@ jobs:
       matrix:
         repository:
           - sdk-sriov
-          - cmd-forwarder-sriov
-          - cmd-nsc
     name: Update ${{ matrix.repository }}
     runs-on: ubuntu-latest
     needs:
