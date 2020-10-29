@@ -160,12 +160,12 @@ jobs:
       - name: Create commit message
         working-directory: ${{ github.repository }}
         run: |
-          echo "Update go.mod and go.sum to latest version from ${{ github.repository }}@master ${{ github.repository }}#${{ steps.findPr.outputs.pr }}" >> /tmp/commit-message
+          echo "Update go.mod and go.sum to latest version from ${{ github.repository }}@master ${{ github.repository }}#${{ github.event.number }}" >> /tmp/commit-message
           echo "" >> /tmp/commit-message
           echo "${{ github.repository }} PR link: https://github.com/${{ github.repository }}/pull/${{ github.event.number }}" >> /tmp/commit-message
           echo "" >> /tmp/commit-message
           echo "${{ github.repository }} commit message:" >> /tmp/commit-message
-          git log master... >> /tmp/commit-message
+          git log origin/master... >> /tmp/commit-message
           echo "Commit Message:"
           cat /tmp/commit-message
       - name: Checkout networkservicemesh/${{ matrix.repository }}
