@@ -21,16 +21,19 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
+	"github.com/vishvananda/netlink"
+
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/pkg/errors"
-	"github.com/vishvananda/netlink"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
-type renameServer struct{}
+type renameServer struct {
+	renames renamesMap
+}
 
 // NewServer returns a new link rename server chain element
 func NewServer() networkservice.NetworkServiceServer {
@@ -38,17 +41,58 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (s *renameServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	if mech := kernel.ToMechanism(request.GetConnection().GetMechanism()); mech != nil {
-		if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-			if ifName := mech.GetInterfaceName(request.GetConnection()); vfConfig.VFInterfaceName != ifName {
-				if err := renameLink(vfConfig.VFInterfaceName, ifName); err != nil {
-					return nil, err
-				}
-				vfConfig.VFInterfaceName = ifName
-			}
+	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
+	if mech == nil {
+		return next.Server(ctx).Request(ctx, request)
+	}
+	ifName := mech.GetInterfaceName(request.GetConnection())
+
+	vfConfig := vfconfig.Config(ctx)
+	if vfConfig == nil || vfConfig.VFInterfaceName == ifName {
+		return next.Server(ctx).Request(ctx, request)
+	}
+
+	if err := renameLink(vfConfig.VFInterfaceName, ifName); err != nil {
+		return nil, err
+	}
+	oldIfName := vfConfig.VFInterfaceName
+	vfConfig.VFInterfaceName = ifName
+
+	conn, err := next.Server(ctx).Request(ctx, request)
+	if err != nil {
+		if renameErr := renameLink(ifName, oldIfName); renameErr != nil {
+			err = errors.Wrapf(err, renameErr.Error())
+		}
+		return nil, err
+	}
+
+	if n, renamed := s.renames.LoadAndDelete(vfConfig.VFInterfaceName); renamed {
+		oldIfName = n
+	}
+	s.renames.Store(ifName, oldIfName)
+
+	return conn, nil
+}
+
+func (s *renameServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
+	_, err := next.Server(ctx).Close(ctx, conn)
+
+	var renameErr error
+	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
+		ifName := mech.GetInterfaceName(conn)
+		oldIfName, renamed := s.renames.LoadAndDelete(ifName)
+		if renamed {
+			renameErr = renameLink(ifName, oldIfName)
 		}
 	}
-	return next.Server(ctx).Request(ctx, request)
+
+	if err != nil && renameErr != nil {
+		return nil, errors.Wrap(err, renameErr.Error())
+	}
+	if renameErr != nil {
+		return nil, renameErr
+	}
+	return &empty.Empty{}, err
 }
 
 func renameLink(oldName, newName string) error {
@@ -62,8 +106,4 @@ func renameLink(oldName, newName string) error {
 	}
 
 	return nil
-}
-
-func (s *renameServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	return next.Server(ctx).Close(ctx, conn)
 }
