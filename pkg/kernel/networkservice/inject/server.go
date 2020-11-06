@@ -46,6 +46,9 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 
 	connID := request.GetConnection().GetId()
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
+	if mech == nil {
+		return next.Server(ctx).Request(ctx, request)
+	}
 
 	forwarderNetNS, err := nshandle.Current()
 	if err != nil {
@@ -81,29 +84,39 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	logEntry := log.Entry(ctx).WithField("injectServer", "Close")
 
-	mech := kernel.ToMechanism(conn.GetMechanism())
+	_, err := next.Server(ctx).Close(ctx, conn)
 
-	forwarderNetNS, err := nshandle.Current()
-	if err != nil {
-		return nil, err
+	var injectErr error
+	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
+		var forwarderNetNS, clientNetNS netns.NsHandle
+		var ifName string
+
+		if forwarderNetNS, injectErr = nshandle.Current(); injectErr != nil {
+			goto exit
+		}
+		defer func() { _ = forwarderNetNS.Close() }()
+
+		if clientNetNS, injectErr = nshandle.FromURL(mech.GetNetNSURL()); injectErr != nil {
+			goto exit
+		}
+		defer func() { _ = clientNetNS.Close() }()
+
+		ifName = mech.GetInterfaceName(conn)
+		if injectErr = moveInterfaceToAnotherNamespace(ifName, clientNetNS, forwarderNetNS); injectErr != nil {
+			goto exit
+		}
+
+		logEntry.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, conn.GetId())
 	}
-	defer func() { _ = forwarderNetNS.Close() }()
 
-	var clientNetNS netns.NsHandle
-	clientNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
-	if err != nil {
-		return nil, err
+exit:
+	if err != nil && injectErr != nil {
+		return nil, errors.Wrap(err, injectErr.Error())
 	}
-	defer func() { _ = clientNetNS.Close() }()
-
-	ifName := mech.GetInterfaceName(conn)
-	err = moveInterfaceToAnotherNamespace(ifName, clientNetNS, forwarderNetNS)
-	if err != nil {
-		return nil, err
+	if injectErr != nil {
+		return nil, injectErr
 	}
-	logEntry.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, conn.GetId())
-
-	return next.Server(ctx).Close(ctx, conn)
+	return &empty.Empty{}, err
 }
 
 func moveInterfaceToAnotherNamespace(ifName string, fromNetNS, toNetNS netns.NsHandle) error {
