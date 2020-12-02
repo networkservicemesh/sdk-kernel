@@ -21,6 +21,7 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
@@ -32,12 +33,15 @@ import (
 )
 
 type renameServer struct {
-	renames renamesMap
+	// If we have 2 rename servers in chain, they should manage their own mappings.
+	id string
 }
 
 // NewServer returns a new link rename server chain element
 func NewServer() networkservice.NetworkServiceServer {
-	return &renameServer{}
+	return &renameServer{
+		id: uuid.New().String(),
+	}
 }
 
 func (s *renameServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
@@ -66,10 +70,9 @@ func (s *renameServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 
-	if n, renamed := s.renames.LoadAndDelete(vfConfig.VFInterfaceName); renamed {
-		oldIfName = n
+	if _, renamed := loadOldIfName(ctx, s.id); !renamed {
+		storeOldIfName(ctx, s.id, oldIfName)
 	}
-	s.renames.Store(ifName, oldIfName)
 
 	return conn, nil
 }
@@ -80,8 +83,7 @@ func (s *renameServer) Close(ctx context.Context, conn *networkservice.Connectio
 	var renameErr error
 	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
 		ifName := mech.GetInterfaceName(conn)
-		oldIfName, renamed := s.renames.LoadAndDelete(ifName)
-		if renamed {
+		if oldIfName, renamed := loadOldIfName(ctx, s.id); renamed {
 			renameErr = renameLink(ifName, oldIfName)
 		}
 	}

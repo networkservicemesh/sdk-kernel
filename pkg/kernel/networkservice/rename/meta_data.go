@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Cisco and/or its affiliates.
+// Copyright (c) 2020 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -17,9 +17,20 @@
 package rename
 
 import (
-	"sync"
+	"context"
+
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 )
 
-//go:generate go-syncmap -output renames_map.gen.go -type renamesMap<string,string>
+type keyType string
 
-type renamesMap sync.Map
+func storeOldIfName(ctx context.Context, id, oldIfName string) {
+	metadata.Map(ctx, false).Store(keyType(id), oldIfName)
+}
+
+func loadOldIfName(ctx context.Context, id string) (string, bool) {
+	if raw, ok := metadata.Map(ctx, false).Load(keyType(id)); ok {
+		return raw.(string), true
+	}
+	return "", false
+}
