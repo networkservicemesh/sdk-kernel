@@ -31,7 +31,7 @@ jobs:
       - name: Build
         run: go build -race  ./...
       - name: Test
-        run: sudo go test -race ./...
+        run: sudo -E PATH="$PATH" bash -c "go test -race ./..."
 
   golangci-lint:
     name: golangci-lint
