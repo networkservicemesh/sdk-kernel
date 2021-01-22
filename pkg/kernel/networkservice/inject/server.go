@@ -28,7 +28,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/logger"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
@@ -42,7 +42,7 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (s *injectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	logEntry := log.Entry(ctx).WithField("injectServer", "Request")
+	logEntry := logger.Log(ctx).WithField("injectServer", "Request")
 
 	connID := request.GetConnection().GetId()
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
@@ -82,7 +82,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logEntry := log.Entry(ctx).WithField("injectServer", "Close")
+	logEntry := logger.Log(ctx).WithField("injectServer", "Close")
 
 	_, err := next.Server(ctx).Close(ctx, conn)
 
