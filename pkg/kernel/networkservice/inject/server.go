@@ -28,7 +28,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/networkservicemesh/sdk/pkg/tools/logger"
+	"github.com/networkservicemesh/sdk/pkg/tools/log"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
@@ -42,7 +42,7 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (s *injectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	logEntry := logger.Log(ctx).WithField("injectServer", "Request")
+	logger := log.FromContext(ctx).WithField("injectServer", "Request")
 
 	connID := request.GetConnection().GetId()
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
@@ -68,21 +68,21 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	if err != nil {
 		return nil, err
 	}
-	logEntry.Infof("moved network interface %s into the Client's namespace for connection %s", ifName, connID)
+	logger.Infof("moved network interface %s into the Client's namespace for connection %s", ifName, connID)
 
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
 		if errMovingBack := moveInterfaceToAnotherNamespace(ifName, curNetNS, clientNetNS, curNetNS); errMovingBack != nil {
-			logEntry.Warnf("failed to move network interface %s into the Forwarder's namespace for connection %s", ifName, connID)
+			logger.Warnf("failed to move network interface %s into the Forwarder's namespace for connection %s", ifName, connID)
 		} else {
-			logEntry.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, connID)
+			logger.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, connID)
 		}
 	}
 	return conn, err
 }
 
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logEntry := logger.Log(ctx).WithField("injectServer", "Close")
+	logger := log.FromContext(ctx).WithField("injectServer", "Close")
 
 	_, err := next.Server(ctx).Close(ctx, conn)
 
@@ -106,7 +106,7 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 			goto exit
 		}
 
-		logEntry.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, conn.GetId())
+		logger.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, conn.GetId())
 	}
 
 exit:
