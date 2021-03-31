@@ -5,10 +5,10 @@ go 1.15
 require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.1.2
-	github.com/networkservicemesh/api v0.0.0-20210323151719-3156ce7533e9
-	github.com/networkservicemesh/sdk v0.0.0-20210331094157-964332cc797d
+	github.com/networkservicemesh/api v0.0.0-20210331143834-12761e9f673f
+	github.com/networkservicemesh/sdk v0.0.0-20210331144417-68a6beb66557
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.0
 	github.com/vishvananda/netns v0.0.0-20200728191858-db3c7e526aae
 	go.uber.org/goleak v1.1.10
