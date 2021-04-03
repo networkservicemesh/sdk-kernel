@@ -5,8 +5,8 @@ go 1.15
 require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.1.2
-	github.com/networkservicemesh/api v0.0.0-20210403000818-2aa71ad8270a
-	github.com/networkservicemesh/sdk v0.0.0-20210403001421-39e4d5dd31b8
+	github.com/networkservicemesh/api v0.0.0-20210403165646-b0b334ca6872
+	github.com/networkservicemesh/sdk v0.0.0-20210403170232-47fc8b2ac74c
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.0
