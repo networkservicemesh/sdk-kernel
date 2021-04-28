@@ -55,7 +55,7 @@ func AddIPs(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			return errors.Wrapf(err, "invalid IP address: %v", ipContext.GetSrcIpAddr())
 		}
 
-		logger.Debugf("Is to set IP: %v and route", ipAddr)
+		logger.Debugf("Is to set IP: %v and routes: %+v", ipAddr, routes)
 		return setIPandRoutes(hostIfName, routes, ipAddr, currNetNS, clientNetNS)
 
 	}
@@ -96,7 +96,6 @@ func setIPandRoutes(ifName string, routes []*networkservice.Route, ipAddr *netli
 					IP:   routeNet.IP,
 					Mask: routeNet.Mask,
 				},
-				Src: ipAddr.IP,
 			}); err != nil && !os.IsExist(err) {
 				return errors.Wrapf(err, "failed to add route: %v", route.GetPrefix())
 			}

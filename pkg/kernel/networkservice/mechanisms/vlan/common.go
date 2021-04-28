@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"strconv"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
@@ -18,9 +19,20 @@ import (
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
 	if mechanism := vlanmech.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		nsFilename := mechanism.GetNetNSURL()
+		if nsFilename == "" {
+			return nil
+		}
 		hostIfName := mechanism.GetInterfaceName(conn)
-		vlanID := mechanism.VlanID()
-		baseInterface := mechanism.GetBaseInterfaceName(conn)
+		vlanID, err := getVlanID(conn)
+		if err != nil {
+			return nil
+		}
+		baseInterface, ok := getBaseInterface(conn)
+		if !ok {
+			return nil
+		}
+		isOneLeg := getOneLegFlag(conn)
+
 		logger := log.FromContext(ctx).WithField("vlan", "create").
 			WithField("HostIfName", hostIfName).
 			WithField("HostNamespace", nsFilename).
@@ -29,10 +41,9 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			WithField("isClient", isClient)
 		logger.Debug("request")
 
-		if nsFilename == "" || vlanID == 0 || baseInterface == "" {
+		if isOneLeg && isClient {
 			return nil
 		}
-
 		// TODO generate this based on conn id
 		tmpName, _ := generateRandomName(7)
 
@@ -69,6 +80,33 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		logger.Debug("Network interface set in client namespace")
 	}
 	return nil
+}
+
+func getVlanID(conn *networkservice.Connection) (int, error) {
+	if ethernetContext := conn.GetContext().GetEthernetContext(); ethernetContext != nil {
+		if ethernetContext.VlanTag != 0 {
+			return int(ethernetContext.VlanTag), nil
+		}
+	}
+	return 0, errors.New("no vlanID provided")
+}
+func getBaseInterface(conn *networkservice.Connection) (string, bool) {
+	if extraContext := conn.GetContext().GetExtraContext(); extraContext != nil {
+		if baseInterface, ok := extraContext["baseInterface"]; ok {
+			return baseInterface, true
+		}
+	}
+	return "", false
+}
+func getOneLegFlag(conn *networkservice.Connection) bool {
+	if extraContext := conn.GetContext().GetExtraContext(); extraContext != nil {
+		if strValue, ok := extraContext["isOneLeg"]; ok {
+			if flag, err := strconv.ParseBool(strValue); err == nil {
+				return flag
+			}
+		}
+	}
+	return false
 }
 
 func generateRandomName(size int) (string, error) {
