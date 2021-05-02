@@ -48,22 +48,23 @@ func (s *ipContextServer) Request(ctx context.Context, request *networkservice.N
 			return nil, errors.Wrapf(err, "failed to get net interface: %v", ifName)
 		}
 
-		ipContext := request.GetConnection().GetContext().GetIpContext()
-		ipAddr, err := netlink.ParseAddr(ipContext.GetSrcIpAddr())
-		if err != nil {
-			return nil, errors.Wrapf(err, "invalid IP address: %v", ipContext.GetSrcIpAddr())
-		}
-
 		if link.Attrs().OperState != netlink.OperUp {
 			if err = netlink.LinkSetUp(link); err != nil {
 				return nil, errors.Wrapf(err, "failed to set up net interface: %v", ifName)
 			}
 		}
 
-		if err := setIPAddr(ipAddr, link); err != nil {
-			return nil, err
+		ipContext := request.GetConnection().GetContext().GetIpContext()
+		for _, ipNet := range ipContext.GetSrcIpAddrs() {
+			ipAddr, err := netlink.ParseAddr(ipNet)
+			if err != nil {
+				return nil, errors.Wrapf(err, "invalid IP address: %v", ipNet)
+			}
+			if err := setIPAddr(ipAddr, link); err != nil {
+				return nil, err
+			}
 		}
-		if err := setRoutes(ipContext.GetSrcRoutes(), ipAddr, link); err != nil {
+		if err := setRoutes(ipContext.GetSrcRoutes(), link); err != nil {
 			return nil, err
 		}
 		if err := setIPNeighbors(ipContext.GetIpNeighbors(), link); err != nil {
@@ -92,20 +93,23 @@ func setIPAddr(ipAddr *netlink.Addr, link netlink.Link) error {
 	return nil
 }
 
-func setRoutes(routes []*networkservice.Route, ipAddr *netlink.Addr, link netlink.Link) error {
+func setRoutes(routes []*networkservice.Route, link netlink.Link) error {
 	for _, route := range routes {
 		_, routeNet, err := net.ParseCIDR(route.GetPrefix())
 		if err != nil {
 			return errors.Wrapf(err, "invalid route CIDR: %v", route.GetPrefix())
 		}
-		if err = netlink.RouteAdd(&netlink.Route{
+		kernelRoute := &netlink.Route{
 			LinkIndex: link.Attrs().Index,
 			Dst: &net.IPNet{
 				IP:   routeNet.IP,
 				Mask: routeNet.Mask,
 			},
-			Src: ipAddr.IP,
-		}); err != nil && !os.IsExist(err) {
+		}
+		if route.GetNextHopIP() != nil {
+			kernelRoute.Gw = route.GetNextHopIP()
+		}
+		if err = netlink.RouteAdd(kernelRoute); err != nil && !os.IsExist(err) {
 			return errors.Wrapf(err, "failed to add route: %v", route.GetPrefix())
 		}
 	}
