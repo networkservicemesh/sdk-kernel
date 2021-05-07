@@ -45,24 +45,22 @@ func AddIPs(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		defer func() { _ = currNetNS.Close() }()
 
 		ipContext := conn.GetContext().GetIpContext()
-		ipAddr, err := netlink.ParseAddr(ipContext.GetDstIpAddr())
+
+		ipNet := ipContext.GetDstIpAddrs()
 		routes := ipContext.GetDstRoutes()
 		if isClient {
-			ipAddr, err = netlink.ParseAddr(ipContext.GetSrcIpAddr())
+			ipNet = ipContext.GetSrcIpAddrs()
 			routes = ipContext.GetSrcRoutes()
 		}
-		if err != nil {
-			return errors.Wrapf(err, "invalid IP address: %v", ipContext.GetSrcIpAddr())
-		}
 
-		logger.Debugf("Is to set IP: %v and routes: %+v", ipAddr, routes)
-		return setIPandRoutes(hostIfName, routes, ipAddr, currNetNS, clientNetNS)
+		logger.Debugf("Is to set IPs: %v and routes: %+v", ipNet, routes)
+		return setIPandRoutes(hostIfName, routes, ipNet, currNetNS, clientNetNS)
 
 	}
 	return nil
 }
 
-func setIPandRoutes(ifName string, routes []*networkservice.Route, ipAddr *netlink.Addr, currNetNS, toNetNS netns.NsHandle) error {
+func setIPandRoutes(ifName string, routes []*networkservice.Route, ipNet []string, currNetNS, toNetNS netns.NsHandle) error {
 	return nshandle.RunIn(currNetNS, toNetNS, func() error {
 		link, err := netlink.LinkByName(ifName)
 		if err != nil {
@@ -70,19 +68,26 @@ func setIPandRoutes(ifName string, routes []*networkservice.Route, ipAddr *netli
 			//return errors.Wrapf(err, "no link created with name %s", ifName)
 		}
 
-		ipAddrs, err := netlink.AddrList(link, kernel.FamilyAll)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get the net interface IP addresses: %v", link.Attrs().Name)
-		}
-
-		for i := range ipAddrs {
-			if ipAddr.Equal(ipAddrs[i]) {
-				return nil
+		for _, ipN := range ipNet {
+			ipAddr, err := netlink.ParseAddr(ipN)
+			if err != nil {
+				return errors.Wrapf(err, "invalid IP address: %v", ipNet)
 			}
-		}
 
-		if err := netlink.AddrAdd(link, ipAddr); err != nil {
-			return errors.Wrapf(err, "failed to add IP address to the net interface: %v %v", link.Attrs().Name, ipAddr)
+			ipAddrs, err := netlink.AddrList(link, kernel.FamilyAll)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get the net interface IP addresses: %v", link.Attrs().Name)
+			}
+
+			for i := range ipAddrs {
+				if ipAddr.Equal(ipAddrs[i]) {
+					return nil
+				}
+			}
+
+			if err := netlink.AddrAdd(link, ipAddr); err != nil {
+				return errors.Wrapf(err, "failed to add IP address to the net interface: %v %v", link.Attrs().Name, ipAddr)
+			}
 		}
 
 		for _, route := range routes {
@@ -90,13 +95,17 @@ func setIPandRoutes(ifName string, routes []*networkservice.Route, ipAddr *netli
 			if err != nil {
 				return errors.Wrapf(err, "invalid route CIDR: %v", route.GetPrefix())
 			}
-			if err = netlink.RouteAdd(&netlink.Route{
+			kernelRoute := &netlink.Route{
 				LinkIndex: link.Attrs().Index,
 				Dst: &net.IPNet{
 					IP:   routeNet.IP,
 					Mask: routeNet.Mask,
 				},
-			}); err != nil && !os.IsExist(err) {
+			}
+			if route.GetNextHopIP() != nil {
+				kernelRoute.Gw = route.GetNextHopIP()
+			}
+			if err = netlink.RouteAdd(kernelRoute); err != nil && !os.IsExist(err) {
 				return errors.Wrapf(err, "failed to add route: %v", route.GetPrefix())
 			}
 		}
