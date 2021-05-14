@@ -3,7 +3,6 @@ package vlan
 import (
 	"context"
 	"net/url"
-	"strconv"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
@@ -17,15 +16,13 @@ import (
 type vlanMechanismServer struct {
 	baseInterface string
 	vlanTag       int32
-	isOneLeg      bool
 }
 
 // NewServer - creates a NetworkServiceServer that requests a vlan interface and populates the netns inode
-func NewServer(baseInterface string, vlanID int32, oneLeg bool) networkservice.NetworkServiceServer {
+func NewServer(baseInterface string, vlanID int32) networkservice.NetworkServiceServer {
 	v := &vlanMechanismServer{
 		baseInterface: baseInterface,
 		vlanTag:       vlanID,
-		isOneLeg:      oneLeg,
 	}
 	return v
 }
@@ -53,7 +50,6 @@ func (v *vlanMechanismServer) Request(ctx context.Context, request *networkservi
 			}
 			extracontext := conn.GetContext().GetExtraContext()
 			extracontext["baseInterface"] = v.baseInterface
-			extracontext["isOneLeg"] = strconv.FormatBool(v.isOneLeg)
 		}
 	}
 	return next.Server(ctx).Request(ctx, request)

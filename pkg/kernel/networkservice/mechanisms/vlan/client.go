@@ -8,7 +8,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/cls"
 	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 
 	"google.golang.org/grpc"
 )
@@ -36,10 +35,10 @@ func (k *vlanClient) Request(ctx context.Context, request *networkservice.Networ
 	if err != nil {
 		return nil, err
 	}
-	if err := create(ctx, conn, metadata.IsClient(k)); err != nil {
+	/* if err := create(ctx, conn, metadata.IsClient(k)); err != nil {
 		_, _ = k.Close(ctx, conn, opts...)
 		return nil, err
-	}
+	} */
 	return conn, nil
 }
 

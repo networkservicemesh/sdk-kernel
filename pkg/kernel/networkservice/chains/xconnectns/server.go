@@ -76,8 +76,6 @@ func NewServer(
 					client.WithName(name),
 					client.WithAdditionalFunctionality(
 						mechanismtranslation.NewClient(),
-						// setup IP and route context
-						netnsconnectioncontext.NewClient(),
 						// mechanism
 						vlan.NewClient(),
 						recvfd.NewClient(),
@@ -88,7 +86,6 @@ func NewServer(
 			),
 			mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 				vlanmech.MECHANISM: vlan.NewServer(),
-				//noopmech.MECHANISM: connectChainFactory(cls.LOCAL),
 			}),
 			// setup IP and route context
 			netnsconnectioncontext.NewServer(),
