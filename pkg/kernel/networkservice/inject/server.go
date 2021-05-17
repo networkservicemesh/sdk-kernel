@@ -70,7 +70,10 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
-		move(logger, request.GetConnection(), true)
+		err = move(logger, request.GetConnection(), true)
+		if err != nil {
+			logger.Warnf("server request failed, failed to move back the interface: %v", err)
+		}
 	}
 	return conn, err
 }
