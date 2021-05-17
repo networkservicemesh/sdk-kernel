@@ -129,3 +129,18 @@ func ToAlias(conn *networkservice.Connection, isClient bool) string {
 	}
 	return alias
 }
+
+// SetLinkUp makes the interface to operationally up
+func SetLinkUp(ifName string) error {
+	link, err := netlink.LinkByName(ifName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get net interface: %v", ifName)
+	}
+
+	if link.Attrs().OperState != netlink.OperUp {
+		if err = netlink.LinkSetUp(link); err != nil {
+			return errors.Wrapf(err, "failed to set up net interface: %v", ifName)
+		}
+	}
+	return nil
+}
