@@ -19,11 +19,8 @@ package ethernetcontext
 
 import (
 	"context"
-	"net"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/pkg/errors"
-	"github.com/vishvananda/netlink"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
@@ -40,28 +37,9 @@ func NewVFServer() networkservice.NetworkServiceServer {
 
 func (s *vfEthernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-		pfLink, err := netlink.LinkByName(vfConfig.PFInterfaceName)
+		err := setupEthernetConfig(vfConfig, request.Connection, false)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get PF network interface: %v", vfConfig.PFInterfaceName)
-		}
-
-		if ethernetContext := request.GetConnection().GetContext().GetEthernetContext(); ethernetContext != nil {
-			if macAddrString := ethernetContext.GetSrcMac(); macAddrString != "" {
-				var macAddr net.HardwareAddr
-				macAddr, err = net.ParseMAC(ethernetContext.GetSrcMac())
-				if err != nil {
-					return nil, errors.Wrapf(err, "invalid MAC address: %v", ethernetContext.GetSrcMac())
-				}
-				if err = netlink.LinkSetVfHardwareAddr(pfLink, vfConfig.VFNum, macAddr); err != nil {
-					return nil, errors.Wrapf(err, "failed to set MAC address for the VF: %v", macAddr)
-				}
-			}
-
-			if vlanTag := int(ethernetContext.GetVlanTag()); vlanTag != 0 {
-				if err = netlink.LinkSetVfVlan(pfLink, vfConfig.VFNum, vlanTag); err != nil {
-					return nil, errors.Wrapf(err, "failed to set VLAN for the VF: %v", vlanTag)
-				}
-			}
+			return nil, err
 		}
 	}
 	return next.Server(ctx).Request(ctx, request)
