@@ -23,7 +23,6 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/vishvananda/netlink"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
@@ -95,17 +94,4 @@ func (s *renameServer) Close(ctx context.Context, conn *networkservice.Connectio
 		return nil, renameErr
 	}
 	return &empty.Empty{}, err
-}
-
-func renameLink(oldName, newName string) error {
-	link, err := netlink.LinkByName(oldName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get the net interface: %v", oldName)
-	}
-
-	if err = netlink.LinkSetName(link, newName); err != nil {
-		return errors.Wrapf(err, "failed to rename net interface: %v -> %v", oldName, newName)
-	}
-
-	return nil
 }
