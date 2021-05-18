@@ -45,26 +45,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 		return next.Server(ctx).Request(ctx, request)
 	}
 
-<<<<<<< HEAD
-	curNetNS, err := nshandle.Current()
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = curNetNS.Close() }()
-
-	var clientNetNS netns.NsHandle
-	clientNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
-	if err != nil {
-		return nil, err
-	}
-	defer func() { _ = clientNetNS.Close() }()
-
-	ifName := mech.GetInterfaceName()
-	err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, clientNetNS)
-	if err != nil {
-=======
 	if err := move(logger, request.GetConnection(), false); err != nil {
->>>>>>> 312f205 (add interface rename and inject client chain element)
 		return nil, err
 	}
 
@@ -85,28 +66,6 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 
 	injectErr := move(logger, conn, true)
 
-<<<<<<< HEAD
-		if curNetNS, injectErr = nshandle.Current(); injectErr != nil {
-			goto exit
-		}
-		defer func() { _ = curNetNS.Close() }()
-
-		if clientNetNS, injectErr = nshandle.FromURL(mech.GetNetNSURL()); injectErr != nil {
-			goto exit
-		}
-		defer func() { _ = clientNetNS.Close() }()
-
-		ifName = mech.GetInterfaceName()
-		if injectErr = moveInterfaceToAnotherNamespace(ifName, curNetNS, clientNetNS, curNetNS); injectErr != nil {
-			goto exit
-		}
-
-		logger.Infof("moved network interface %s into the Forwarder's namespace for connection %s", ifName, conn.GetId())
-	}
-
-exit:
-=======
->>>>>>> 312f205 (add interface rename and inject client chain element)
 	if err != nil && injectErr != nil {
 		return nil, errors.Wrap(err, injectErr.Error())
 	}

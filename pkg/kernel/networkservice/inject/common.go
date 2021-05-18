@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Nordix Foundation.
+// Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -61,7 +61,7 @@ func move(logger log.Logger, conn *networkservice.Connection, isMoveBack bool) e
 	}
 	defer func() { _ = targetNetNS.Close() }()
 
-	ifName := mech.GetInterfaceName(conn)
+	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
 		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
 	} else {

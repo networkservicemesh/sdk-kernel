@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Nordix Foundation.
+// Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -61,6 +61,9 @@ func (c *renameClient) Request(ctx context.Context, request *networkservice.Netw
 	}
 
 	if err := renameLink(vfConfig.VFInterfaceName, ifName); err != nil {
+		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
+			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+		}
 		return nil, err
 	}
 	logger.Infof("renamed the interface %s into %s", vfConfig.VFInterfaceName, ifName)
@@ -75,13 +78,8 @@ func (c *renameClient) Close(ctx context.Context, conn *networkservice.Connectio
 
 	var renameErr error
 	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
-<<<<<<< HEAD
 		ifName := mech.GetInterfaceName()
-		_, err := netlink.LinkByName(ifName)
-=======
-		ifName := mech.GetInterfaceName(conn)
 		_, err = netlink.LinkByName(ifName)
->>>>>>> 1a29404 (fix lint issues)
 		if err == nil {
 			vfConfig := vfconfig.Config(ctx)
 			renameErr = renameLink(ifName, vfConfig.VFInterfaceName)

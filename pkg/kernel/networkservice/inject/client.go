@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Nordix Foundation.
+// Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -44,6 +44,9 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 	if err := move(logger, conn, false); err != nil {
+		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
+			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+		}
 		return nil, err
 	}
 	return conn, nil
