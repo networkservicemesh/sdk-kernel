@@ -11,9 +11,10 @@ import (
 	"net"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
 func setupEthernetConfig(vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isClient bool) error {

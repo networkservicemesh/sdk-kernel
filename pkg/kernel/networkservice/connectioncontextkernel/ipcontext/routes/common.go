@@ -26,9 +26,10 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/mechutils"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/mechutils"
 )
 
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
