@@ -1,5 +1,7 @@
 // Copyright (c) 2021 Cisco and/or its affiliates.
 //
+// Copyright (c) 2021 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +27,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-
-	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 )
 
 type mtuServer struct {
@@ -64,7 +64,7 @@ func (m *mtuServer) Request(ctx context.Context, request *networkservice.Network
 	if err != nil {
 		return nil, err
 	}
-	if err := setMTU(ctx, conn, metadata.IsClient(m)); err != nil {
+	if err := setMTU(ctx, conn); err != nil {
 		log.FromContext(ctx).Debugf("about to Close due to error: %+v", err)
 		_, _ = m.Close(ctx, conn)
 		return nil, err

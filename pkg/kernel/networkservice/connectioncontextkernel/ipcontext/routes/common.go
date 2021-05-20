@@ -1,5 +1,7 @@
 // Copyright (c) 2020-2021 Cisco and/or its affiliates.
 //
+// Copyright (c) 2021 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,20 +31,20 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/mechutils"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		handle, err := mechutils.ToNetlinkHandle(mechanism)
+		handle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
 		}
 		defer handle.Delete()
 
-		ifName := mechutils.ToInterfaceName(conn, isClient)
+		ifName := mechanism.GetInterfaceName(conn)
 
-		err = mechutils.SetLinkUp(ifName)
+		err = nshandle.SetLinkUp(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}

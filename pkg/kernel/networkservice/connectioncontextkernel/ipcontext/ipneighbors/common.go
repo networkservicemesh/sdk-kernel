@@ -1,6 +1,4 @@
-// Copyright (c) 2021 Cisco and/or its affiliates.
-//
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -18,30 +16,24 @@
 
 // +build linux
 
-package mtu
+package ipneighbors
 
 import (
 	"context"
-	"time"
+	"net"
+	"os"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
+	"github.com/vishvananda/netlink"
 
+	kernelmech "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
-func setMTU(ctx context.Context, conn *networkservice.Connection) error {
+func create(ctx context.Context, conn *networkservice.Connection) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		// Note: These are switched from normal because if we are the client, we need to assign the IP
-		// in the Endpoints NetNS for the Dst.  If we are the *server* we need to assign the IP for the
-		// clients NetNS (ie the source).
-		mtu := conn.GetContext().GetMTU()
-		if mtu == 0 {
-			return nil
-		}
-
 		handle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
@@ -57,18 +49,31 @@ func setMTU(ctx context.Context, conn *networkservice.Connection) error {
 
 		l, err := handle.LinkByName(ifName)
 		if err != nil {
-			return errors.Wrapf(err, "error attempting to retrieve link %q", ifName)
+			return errors.WithStack(err)
 		}
 
-		now := time.Now()
-		if err := handle.LinkSetMTU(l, int(mtu)); err != nil {
-			return errors.Wrapf(err, "error attempting to set MTU on link %q to value %q", l.Attrs().Name, mtu)
+		if err := setIPNeighbors(conn.GetContext().GetIpContext().GetIpNeighbors(), l); err != nil {
+			return errors.WithStack(err)
 		}
-		log.FromContext(ctx).
-			WithField("link.Name", l.Attrs().Name).
-			WithField("MTU", mtu).
-			WithField("duration", time.Since(now)).
-			WithField("netlink", "LinkSetMTU").Debug("completed")
+
+	}
+	return nil
+}
+
+func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, link netlink.Link) error {
+	for _, ipNeighbor := range ipNeighbours {
+		macAddr, err := net.ParseMAC(ipNeighbor.HardwareAddress)
+		if err != nil {
+			return errors.Wrapf(err, "invalid neighbor MAC address: %v", ipNeighbor.HardwareAddress)
+		}
+		if err := netlink.NeighAdd(&netlink.Neigh{
+			LinkIndex:    link.Attrs().Index,
+			State:        kernelmech.NudReachable,
+			IP:           net.ParseIP(ipNeighbor.Ip),
+			HardwareAddr: macAddr,
+		}); err != nil && !os.IsExist(err) {
+			return errors.Wrapf(err, "failed to add IP neighbor: %v", ipNeighbor)
+		}
 	}
 	return nil
 }

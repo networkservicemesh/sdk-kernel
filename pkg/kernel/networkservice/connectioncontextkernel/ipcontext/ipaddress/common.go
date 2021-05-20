@@ -1,5 +1,7 @@
 // Copyright (c) 2020-2021 Cisco and/or its affiliates.
 //
+// Copyright (c) 2021 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +32,10 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/mechutils"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
@@ -48,31 +51,46 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			return nil
 		}
 
-		handle, err := mechutils.ToNetlinkHandle(mechanism)
+		netlinkHandle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer handle.Delete()
+		defer netlinkHandle.Delete()
 
-		ifName := mechutils.ToInterfaceName(conn, isClient)
+		ifName := mechanism.GetInterfaceName(conn)
 
-		err = mechutils.SetLinkUp(ifName)
+		err = nshandle.SetLinkUp(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		l, err := handle.LinkByName(ifName)
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
+
+		var forwarderNetNS netns.NsHandle
+		forwarderNetNS, err = nshandle.Current()
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer func() { _ = forwarderNetNS.Close() }()
+
+		var targetNetNS netns.NsHandle
+		targetNetNS, err = nshandle.FromURL(mechanism.GetNetNSURL())
+		if err != nil {
+			return errors.WithStack(err)
+		}
+		defer func() { _ = targetNetNS.Close() }()
+
 		disableIPv6Filename := fmt.Sprintf("/proc/sys/net/ipv6/conf/%s/disable_ipv6", l.Attrs().Name)
-		if err = mechutils.RunInNetNS(mechanism, func() error {
+		if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
 			return ioutil.WriteFile(disableIPv6Filename, []byte("0"), 0600)
 		}); err != nil {
 			return errors.Wrapf(err, "failed to set %s = 0", disableIPv6Filename)
 		}
 
-		nsHandle, err := mechutils.ToNSHandle(mechanism)
+		nsHandle, err := nshandle.FromURL(mechanism.GetNetNSURL())
 		defer func() { _ = nsHandle.Close() }()
 		if err != nil {
 			return errors.Wrapf(err, "failed to retrieve nsHandle for %+v", mechanism)
@@ -97,7 +115,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			if ipNet != nil && ipNet.IP.To4() == nil {
 				addr.Flags |= unix.IFA_F_NODAD
 			}
-			if err := handle.AddrReplace(l, addr); err != nil {
+			if err := netlinkHandle.AddrReplace(l, addr); err != nil {
 				return errors.Wrapf(err, "attempting to add ip address %s to %s (type: %s) with flags 0x%x", addr.IPNet, l.Attrs().Name, l.Type(), addr.Flags)
 			}
 			log.FromContext(ctx).

@@ -1,5 +1,7 @@
 // Copyright (c) 2020 Cisco and/or its affiliates.
 //
+// Copyright (c) 2021 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,5 +16,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package routes provides a NetworkServiceServer that sets the routes in the kernel from the connection context
+// Package routes provides a networkservice chain elements that sets the routes in the kernel interfaces from the connection context
 package routes

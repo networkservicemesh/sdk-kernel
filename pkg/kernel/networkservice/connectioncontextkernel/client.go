@@ -1,5 +1,7 @@
 // Copyright (c) 2020-2021 Cisco and/or its affiliates.
 //
+// Copyright (c) 2021 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +28,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddress"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipneighbors"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/routes"
 )
 
@@ -55,6 +58,7 @@ import (
 func NewClient() networkservice.NetworkServiceClient {
 	return chain.NewNetworkServiceClient(
 		mtu.NewClient(),
+		ipneighbors.NewClient(),
 		routes.NewClient(),
 		ipaddress.NewClient(),
 	)

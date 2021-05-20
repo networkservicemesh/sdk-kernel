@@ -1,5 +1,3 @@
-// Copyright (c) 2020-2021 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -16,6 +14,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package connectioncontextkernel provides networkservice chain elements for applying connection context
-// to the kernel interface side of vWires being plugged into the vpp
-package connectioncontextkernel
+// Package ipneighbors provides networkservice chain elements that support setting ip neighbors on kernel interfaces
+package ipneighbors
