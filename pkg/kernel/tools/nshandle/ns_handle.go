@@ -1,7 +1,5 @@
 // Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
 //
-// Copyright (c) 2021 Nordix Foundation.
-//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +22,6 @@ import (
 	"runtime"
 
 	"github.com/pkg/errors"
-	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 )
 
@@ -49,26 +46,6 @@ func FromURL(urlString string) (handle netns.NsHandle, err error) {
 		return -1, errors.Wrapf(err, "failed to obtain network NS handle")
 	}
 
-	return handle, nil
-}
-
-// ToNetlinkHandle - mechanism to netlink.Handle for the NetNS specified in mechanism
-func ToNetlinkHandle(urlString string) (*netlink.Handle, error) {
-	curNSHandle, err := Current()
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	nsHandle, err := FromURL(urlString)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-	defer func() { _ = nsHandle.Close() }()
-
-	handle, err := netlink.NewHandleAtFrom(nsHandle, curNSHandle)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
 	return handle, nil
 }
 
@@ -99,19 +76,4 @@ func RunIn(current, target netns.NsHandle, runner func() error) error {
 	}
 
 	return runner()
-}
-
-// SetLinkUp makes the interface to operationally up
-func SetLinkUp(ifName string) error {
-	link, err := netlink.LinkByName(ifName)
-	if err != nil {
-		return errors.Wrapf(err, "failed to get net interface: %v", ifName)
-	}
-
-	if link.Attrs().OperState != netlink.OperUp {
-		if err = netlink.LinkSetUp(link); err != nil {
-			return errors.Wrapf(err, "failed to set up net interface: %v", ifName)
-		}
-	}
-	return nil
 }

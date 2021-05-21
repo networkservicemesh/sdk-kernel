@@ -35,6 +35,7 @@ import (
 	"github.com/vishvananda/netns"
 	"golang.org/x/sys/unix"
 
+	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
@@ -51,7 +52,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			return nil
 		}
 
-		netlinkHandle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
+		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
 		}
@@ -59,13 +60,12 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 
 		ifName := mechanism.GetInterfaceName(conn)
 
-		err = nshandle.SetLinkUp(ifName)
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		l, err := netlinkHandle.LinkByName(ifName)
-		if err != nil {
+		if err = netlinkHandle.LinkSetUp(l); err != nil {
 			return errors.WithStack(err)
 		}
 

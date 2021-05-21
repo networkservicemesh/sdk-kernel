@@ -28,27 +28,25 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
-	kernelmech "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
+	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
 func create(ctx context.Context, conn *networkservice.Connection) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		handle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
+		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer handle.Delete()
+		defer netlinkHandle.Delete()
 
 		ifName := mechanism.GetInterfaceName(conn)
 
-		err = nshandle.SetLinkUp(ifName)
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		l, err := handle.LinkByName(ifName)
-		if err != nil {
+		if err = netlinkHandle.LinkSetUp(l); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -60,15 +58,15 @@ func create(ctx context.Context, conn *networkservice.Connection) error {
 	return nil
 }
 
-func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, link netlink.Link) error {
+func setIPNeighbors(ipNeighbours []*networkservice.IpNeighbor, netLink netlink.Link) error {
 	for _, ipNeighbor := range ipNeighbours {
 		macAddr, err := net.ParseMAC(ipNeighbor.HardwareAddress)
 		if err != nil {
 			return errors.Wrapf(err, "invalid neighbor MAC address: %v", ipNeighbor.HardwareAddress)
 		}
 		if err := netlink.NeighAdd(&netlink.Neigh{
-			LinkIndex:    link.Attrs().Index,
-			State:        kernelmech.NudReachable,
+			LinkIndex:    netLink.Attrs().Index,
+			State:        link.NudReachable,
 			IP:           net.ParseIP(ipNeighbor.Ip),
 			HardwareAddr: macAddr,
 		}); err != nil && !os.IsExist(err) {

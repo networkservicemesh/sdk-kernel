@@ -29,7 +29,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
+	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
 func setMTU(ctx context.Context, conn *networkservice.Connection) error {
@@ -42,26 +42,25 @@ func setMTU(ctx context.Context, conn *networkservice.Connection) error {
 			return nil
 		}
 
-		handle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
+		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer handle.Delete()
+		defer netlinkHandle.Delete()
 
 		ifName := mechanism.GetInterfaceName(conn)
 
-		err = nshandle.SetLinkUp(ifName)
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		l, err := handle.LinkByName(ifName)
-		if err != nil {
-			return errors.Wrapf(err, "error attempting to retrieve link %q", ifName)
+		if err = netlinkHandle.LinkSetUp(l); err != nil {
+			return errors.WithStack(err)
 		}
 
 		now := time.Now()
-		if err := handle.LinkSetMTU(l, int(mtu)); err != nil {
+		if err := netlinkHandle.LinkSetMTU(l, int(mtu)); err != nil {
 			return errors.Wrapf(err, "error attempting to set MTU on link %q to value %q", l.Attrs().Name, mtu)
 		}
 		log.FromContext(ctx).

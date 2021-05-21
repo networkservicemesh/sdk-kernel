@@ -26,7 +26,7 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
-func setupEthernetConfig(vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isClient bool) error {
+func vfCreate(vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isClient bool) error {
 	pfLink, err := netlink.LinkByName(vfConfig.PFInterfaceName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get PF network interface: %v", vfConfig.PFInterfaceName)

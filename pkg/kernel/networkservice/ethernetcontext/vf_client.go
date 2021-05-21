@@ -40,7 +40,7 @@ func (i *vfEthernetClient) Request(ctx context.Context, request *networkservice.
 		return nil, err
 	}
 	if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-		err := setupEthernetConfig(vfConfig, conn, true)
+		err := vfCreate(vfConfig, conn, true)
 		if err != nil {
 			return nil, err
 		}

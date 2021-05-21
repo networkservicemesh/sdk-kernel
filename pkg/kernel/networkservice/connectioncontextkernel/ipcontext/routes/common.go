@@ -31,26 +31,25 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
+	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		handle, err := nshandle.ToNetlinkHandle(mechanism.GetNetNSURL())
+		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer handle.Delete()
+		defer netlinkHandle.Delete()
 
 		ifName := mechanism.GetInterfaceName(conn)
 
-		err = nshandle.SetLinkUp(ifName)
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		l, err := handle.LinkByName(ifName)
-		if err != nil {
+		if err = netlinkHandle.LinkSetUp(l); err != nil {
 			return errors.WithStack(err)
 		}
 
@@ -64,12 +63,12 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			routes = conn.GetContext().GetIpContext().GetSrcRoutesWithExplicitNextHop()
 		}
 		for _, route := range linkRoutes {
-			if err := routeAdd(ctx, handle, l, netlink.SCOPE_LINK, route); err != nil {
+			if err := routeAdd(ctx, netlinkHandle, l, netlink.SCOPE_LINK, route); err != nil {
 				return err
 			}
 		}
 		for _, route := range routes {
-			if err := routeAdd(ctx, handle, l, netlink.SCOPE_LINK, route); err != nil {
+			if err := routeAdd(ctx, netlinkHandle, l, netlink.SCOPE_LINK, route); err != nil {
 				return err
 			}
 		}

@@ -39,7 +39,7 @@ func NewVFServer() networkservice.NetworkServiceServer {
 
 func (s *vfEthernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-		err := setupEthernetConfig(vfConfig, request.Connection, false)
+		err := vfCreate(vfConfig, request.Connection, false)
 		if err != nil {
 			return nil, err
 		}
