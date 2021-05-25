@@ -1,4 +1,6 @@
-// Copyright (c) 2020 Intel Corporation. All Rights Reserved.
+// Copyright (c) 2020-2021 Intel Corporation. All Rights Reserved.
+//
+// Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -25,6 +27,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
 // State defines admin state of the network interface
@@ -227,4 +231,24 @@ func searchByName(ns netns.NsHandle, name, pciAddress string) (netlink.Link, err
 	}
 
 	return link, nil
+}
+
+// GetNetlinkHandle - mechanism to netlink.Handle for the NetNS specified in mechanism
+func GetNetlinkHandle(urlString string) (*netlink.Handle, error) {
+	curNSHandle, err := nshandle.Current()
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	nsHandle, err := nshandle.FromURL(urlString)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	defer func() { _ = nsHandle.Close() }()
+
+	handle, err := netlink.NewHandleAtFrom(nsHandle, curNSHandle)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return handle, nil
 }

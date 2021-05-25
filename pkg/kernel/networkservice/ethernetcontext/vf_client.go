@@ -1,5 +1,3 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
-//
 // Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
@@ -16,37 +14,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package ethernetcontext provides chain element for setup link ethernet properties
 package ethernetcontext
 
 import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
-type vfEthernetContextServer struct{}
+type vfEthernetClient struct{}
 
-// NewVFServer returns a new VF ethernet context server chain element
-func NewVFServer() networkservice.NetworkServiceServer {
-	return &vfEthernetContextServer{}
+// NewVFClient returns a new VF ethernet context client chain element
+func NewVFClient() networkservice.NetworkServiceClient {
+	return &vfEthernetClient{}
 }
 
-func (s *vfEthernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
+func (i *vfEthernetClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
+	conn, err := next.Client(ctx).Request(ctx, request, opts...)
+	if err != nil {
+		return nil, err
+	}
 	if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
-		err := vfCreate(vfConfig, request.Connection, false)
+		err := vfCreate(vfConfig, conn, true)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return next.Server(ctx).Request(ctx, request)
+	return conn, nil
 }
 
-func (s *vfEthernetContextServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	return next.Server(ctx).Close(ctx, conn)
+func (i *vfEthernetClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
+	return next.Client(ctx).Close(ctx, conn, opts...)
 }
