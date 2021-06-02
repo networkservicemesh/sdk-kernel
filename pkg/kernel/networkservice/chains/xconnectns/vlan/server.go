@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
+// Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -43,7 +43,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
 )
 
-type kernelServer struct {
+type vlanServer struct {
 	endpoint.Endpoint
 }
 
@@ -61,7 +61,7 @@ func NewServer(
 	clientURL *url.URL,
 	clientDialOptions ...grpc.DialOption,
 ) endpoint.Endpoint {
-	rv := kernelServer{}
+	rv := vlanServer{}
 
 	rv.Endpoint = endpoint.NewServer(ctx,
 		tokenGenerator,
