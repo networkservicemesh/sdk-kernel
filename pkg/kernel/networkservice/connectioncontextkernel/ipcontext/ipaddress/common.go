@@ -29,6 +29,7 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
@@ -39,87 +40,109 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
+// MechanicsInter implements the interface for kernel and vlan mechanisms
+type MechanicsInter interface {
+	GetNetNSURL() string
+	GetInterfaceName() string
+}
+
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
-		// Note: These are switched from normal because if we are the client, we need to assign the IP
-		// in the Endpoints NetNS for the Dst.  If we are the *server* we need to assign the IP for the
-		// clients NetNS (ie the source).
-		ipNets := conn.GetContext().GetIpContext().GetSrcIPNets()
-		if isClient {
-			ipNets = conn.GetContext().GetIpContext().GetDstIPNets()
-		}
-		if ipNets == nil {
-			return nil
-		}
+	if kernelMechanism := kernel.ToMechanism(conn.GetMechanism()); kernelMechanism != nil {
+		return addIPs(ctx, conn, isClient, kernelMechanism)
+	} else if vlanMechanism := vlanmech.ToMechanism(conn.GetMechanism()); vlanMechanism != nil {
+		return addIPs(ctx, conn, true, vlanMechanism)
+	}
+	return nil
+}
+func addIPs(ctx context.Context, conn *networkservice.Connection, isClient bool, mechanism MechanicsInter) error {
+	// Note: These are switched from normal because if we are the client, we need to assign the IP
+	// in the Endpoints NetNS for the Dst.  If we are the *server* we need to assign the IP for the
+	// clients NetNS (ie the source).
+	ipNets := conn.GetContext().GetIpContext().GetSrcIPNets()
+	if isClient {
+		ipNets = conn.GetContext().GetIpContext().GetDstIPNets()
+	}
+	if ipNets == nil {
+		return nil
+	}
 
-		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		defer netlinkHandle.Delete()
+	targetNetNSURL := mechanism.GetNetNSURL()
+	if targetNetNSURL == "" {
+		return nil
+	}
+	var targetNetNS netns.NsHandle
+	targetNetNS, err := nshandle.FromURL(targetNetNSURL)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer func() { _ = targetNetNS.Close() }()
 
-		ifName := mechanism.GetInterfaceName()
+	netlinkHandle, err := link.GetNetlinkHandle(targetNetNSURL)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer netlinkHandle.Delete()
 
-		l, err := netlinkHandle.LinkByName(ifName)
-		if err != nil {
-			return errors.WithStack(err)
-		}
+	ifName := mechanism.GetInterfaceName()
 
-		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.WithStack(err)
-		}
+	l, err := netlinkHandle.LinkByName(ifName)
+	if err != nil {
+		return errors.WithStack(err)
+	}
 
-		var forwarderNetNS netns.NsHandle
-		forwarderNetNS, err = nshandle.Current()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		defer func() { _ = forwarderNetNS.Close() }()
+	if err = netlinkHandle.LinkSetUp(l); err != nil {
+		return errors.WithStack(err)
+	}
 
-		var targetNetNS netns.NsHandle
-		targetNetNS, err = nshandle.FromURL(mechanism.GetNetNSURL())
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		defer func() { _ = targetNetNS.Close() }()
+	if err = enableIPv6(targetNetNS, l.Attrs().Name); err != nil {
+		return errors.WithStack(err)
+	}
 
-		disableIPv6Filename := fmt.Sprintf("/proc/sys/net/ipv6/conf/%s/disable_ipv6", l.Attrs().Name)
-		if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
-			return ioutil.WriteFile(disableIPv6Filename, []byte("0"), 0600)
-		}); err != nil {
-			return errors.Wrapf(err, "failed to set %s = 0", disableIPv6Filename)
+	ch := make(chan netlink.AddrUpdate)
+	done := make(chan struct{})
+	defer close(done)
+	if err := netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
+		return errors.Wrapf(err, "failed to subscribe for interface address updates")
+	}
+	for _, ipNet := range ipNets {
+		now := time.Now()
+		addr := &netlink.Addr{
+			IPNet: ipNet,
+			Flags: unix.IFA_F_PERMANENT,
 		}
+		// Turns out IPv6 uses Duplicate Address Detection (DAD) which
+		// we don't need here and which can cause it to take more than a second
+		// before anything *works* (even though the interface is up).  This causes
+		// cryptic error messages.  To avoid, we use the flag to disable DAD for
+		// any IPv6 addresses. Further, it seems that this is only needed for veth type, not if we have a tapv2
+		if ipNet != nil && ipNet.IP.To4() == nil {
+			addr.Flags |= unix.IFA_F_NODAD
+		}
+		if err := netlinkHandle.AddrReplace(l, addr); err != nil {
+			return errors.Wrapf(err, "attempting to add ip address %s to %s (type: %s) with flags 0x%x", addr.IPNet, l.Attrs().Name, l.Type(), addr.Flags)
+		}
+		log.FromContext(ctx).
+			WithField("link.Name", l.Attrs().Name).
+			WithField("Addr", ipNet.String()).
+			WithField("duration", time.Since(now)).
+			WithField("netlink", "AddrAdd").Debug("completed")
+	}
+	return waitForIPNets(ctx, ch, l, ipNets)
+}
 
-		ch := make(chan netlink.AddrUpdate)
-		done := make(chan struct{})
-		defer close(done)
-		if err := netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
-			return errors.Wrapf(err, "failed to subscribe for interface address updates")
-		}
-		for _, ipNet := range ipNets {
-			now := time.Now()
-			addr := &netlink.Addr{
-				IPNet: ipNet,
-				Flags: unix.IFA_F_PERMANENT,
-			}
-			// Turns out IPv6 uses Duplicate Address Detection (DAD) which
-			// we don't need here and which can cause it to take more than a second
-			// before anything *works* (even though the interface is up).  This causes
-			// cryptic error messages.  To avoid, we use the flag to disable DAD for
-			// any IPv6 addresses. Further, it seems that this is only needed for veth type, not if we have a tapv2
-			if ipNet != nil && ipNet.IP.To4() == nil {
-				addr.Flags |= unix.IFA_F_NODAD
-			}
-			if err := netlinkHandle.AddrReplace(l, addr); err != nil {
-				return errors.Wrapf(err, "attempting to add ip address %s to %s (type: %s) with flags 0x%x", addr.IPNet, l.Attrs().Name, l.Type(), addr.Flags)
-			}
-			log.FromContext(ctx).
-				WithField("link.Name", l.Attrs().Name).
-				WithField("Addr", ipNet.String()).
-				WithField("duration", time.Since(now)).
-				WithField("netlink", "AddrAdd").Debug("completed")
-		}
-		return waitForIPNets(ctx, ch, l, ipNets)
+func enableIPv6(targetNetNS netns.NsHandle, ifName string) error {
+	var forwarderNetNS netns.NsHandle
+	forwarderNetNS, err := nshandle.Current()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer func() { _ = forwarderNetNS.Close() }()
+
+	disableIPv6Filename := fmt.Sprintf("/proc/sys/net/ipv6/conf/%s/disable_ipv6", ifName)
+	if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
+		return ioutil.WriteFile(disableIPv6Filename, []byte("0"), 0600)
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set %s = 0", disableIPv6Filename)
 	}
 	return nil
 }

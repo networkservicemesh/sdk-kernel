@@ -30,6 +30,7 @@ import (
 
 type vlanClient struct{}
 
+// NewClient returns a VLAN client chain element
 func NewClient() networkservice.NetworkServiceClient {
 	return &vlanClient{}
 }
@@ -51,10 +52,6 @@ func (k *vlanClient) Request(ctx context.Context, request *networkservice.Networ
 	if err != nil {
 		return nil, err
 	}
-	/* if err := create(ctx, conn, metadata.IsClient(k)); err != nil {
-		_, _ = k.Close(ctx, conn, opts...)
-		return nil, err
-	} */
 	return conn, nil
 }
 

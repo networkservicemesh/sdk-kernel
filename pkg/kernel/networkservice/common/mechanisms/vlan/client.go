@@ -14,8 +14,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// vlanClient provides a VLAN client chain element
-
 package vlan
 
 import (
@@ -39,6 +37,7 @@ type vlanClient struct {
 	interfaceName string
 }
 
+// NewClient returns a new vlan client chain element
 func NewClient(options ...Option) networkservice.NetworkServiceClient {
 	v := &vlanClient{}
 	for _, opt := range options {
@@ -87,6 +86,7 @@ func (v *vlanClient) Close(ctx context.Context, conn *networkservice.Connection,
 	return next.Client(ctx).Close(ctx, conn, opts...)
 }
 
+// Option for vlan Client chain eleent
 type Option func(v *vlanClient)
 
 // WithInterfaceName sets interface name

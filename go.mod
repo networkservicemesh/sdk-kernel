@@ -1,6 +1,7 @@
 module github.com/networkservicemesh/sdk-kernel
 
 go 1.16
+
 require (
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/golang/protobuf v1.4.3

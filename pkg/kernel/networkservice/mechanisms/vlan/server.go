@@ -25,18 +25,19 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
 type vlanServer struct{}
 
-// NewServer returns a VLAN client chain element
+// NewServer returns a VLAN server chain element
 func NewServer() networkservice.NetworkServiceServer {
 	return &vlanServer{}
 }
@@ -62,7 +63,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		if nsFilename == "" {
 			return nil
 		}
-		hostIfName := mechanism.GetInterfaceName(conn)
+		hostIfName := mechanism.GetInterfaceName()
 		vlanID, err := getVlanID(conn)
 		if err != nil {
 			return nil
@@ -159,7 +160,7 @@ func createLink(name, hostInterface string, vlanID int) (netlink.Link, error) {
 		VlanId:       vlanID,
 		VlanProtocol: netlink.VLAN_PROTOCOL_8021Q,
 	}
-	if err := netlink.LinkAdd(newLink); err != nil {
+	if err = netlink.LinkAdd(newLink); err != nil {
 		return nil, errors.Wrapf(err, "failed to create vlan interface %s", name)
 	}
 

@@ -29,7 +29,9 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
@@ -67,6 +69,12 @@ func NewServer() networkservice.NetworkServiceServer {
 func (i *ipaddressServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
+	if vlanMechanism := vlanmech.ToMechanism(request.GetConnection().GetMechanism()); vlanMechanism != nil {
+		if err := create(ctx, request.GetConnection(), metadata.IsClient(i)); err != nil {
+			return nil, err
+		}
+		return next.Server(ctx).Request(ctx, request)
+	}
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
 		return nil, err

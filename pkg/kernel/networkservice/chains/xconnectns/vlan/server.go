@@ -27,8 +27,6 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/mechanisms/vlan"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/netnsconnectioncontext"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/client"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/chains/endpoint"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/clienturl"
@@ -41,6 +39,9 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/adapters"
 	"github.com/networkservicemesh/sdk/pkg/tools/addressof"
 	"github.com/networkservicemesh/sdk/pkg/tools/token"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/mechanisms/vlan"
 )
 
 type vlanServer struct {
@@ -76,7 +77,6 @@ func NewServer(
 					client.WithName(name),
 					client.WithAdditionalFunctionality(
 						mechanismtranslation.NewClient(),
-						// mechanism
 						vlan.NewClient(),
 						recvfd.NewClient(),
 						sendfd.NewClient(),
@@ -87,8 +87,8 @@ func NewServer(
 			mechanisms.NewServer(map[string]networkservice.NetworkServiceServer{
 				vlanmech.MECHANISM: vlan.NewServer(),
 			}),
-			// setup IP and route context
-			netnsconnectioncontext.NewServer(),
+			connectioncontextkernel.NewServer(),
+
 			sendfd.NewServer(),
 		),
 	)
