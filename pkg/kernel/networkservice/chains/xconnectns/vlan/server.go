@@ -71,9 +71,11 @@ func NewServer(
 		endpoint.WithAdditionalFunctionality(
 			recvfd.NewServer(),
 			clienturl.NewServer(clientURL),
-			heal.NewServer(ctx, addressof.NetworkServiceClient(adapters.NewServerToClient(rv))),
+			heal.NewServer(ctx,
+				heal.WithOnHeal(addressof.NetworkServiceClient(adapters.NewServerToClient(rv))),
+				heal.WithOnRestore(heal.OnRestoreIgnore)),
 			connect.NewServer(ctx,
-				client.NewCrossConnectClientFactory(
+				client.NewClientFactory(
 					client.WithName(name),
 					client.WithAdditionalFunctionality(
 						mechanismtranslation.NewClient(),
