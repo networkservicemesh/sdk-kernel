@@ -37,7 +37,7 @@ type State uint
 const (
 	// DOWN is link admin state down
 	DOWN State = iota
-	// UP is link admin state down
+	// UP is link admin state up
 	UP
 )
 
