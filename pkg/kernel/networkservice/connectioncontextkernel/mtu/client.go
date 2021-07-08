@@ -22,6 +22,7 @@ package mtu
 
 import (
 	"context"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -64,7 +65,7 @@ func (m *mtuClient) Request(ctx context.Context, request *networkservice.Network
 	if err != nil {
 		return nil, err
 	}
-	if err := setMTU(ctx, conn); err != nil {
+	if err := setMTU(ctx, conn, metadata.IsClient(m)); err != nil {
 		log.FromContext(ctx).Debugf("about to Close due to error: %+v", err)
 		_, _ = m.Close(ctx, conn, opts...)
 		return nil, err

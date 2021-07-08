@@ -31,7 +31,7 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
-func create(ctx context.Context, conn *networkservice.Connection) error {
+func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
@@ -39,7 +39,7 @@ func create(ctx context.Context, conn *networkservice.Connection) error {
 		}
 		defer netlinkHandle.Delete()
 
-		ifName := mechanism.GetInterfaceName(conn)
+		ifName := mechanism.ToInterfaceName(conn, isClient)
 
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {

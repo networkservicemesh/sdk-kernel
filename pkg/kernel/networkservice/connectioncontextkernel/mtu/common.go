@@ -32,7 +32,7 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
-func setMTU(ctx context.Context, conn *networkservice.Connection) error {
+func setMTU(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		// Note: These are switched from normal because if we are the client, we need to assign the IP
 		// in the Endpoints NetNS for the Dst.  If we are the *server* we need to assign the IP for the
@@ -48,7 +48,7 @@ func setMTU(ctx context.Context, conn *networkservice.Connection) error {
 		}
 		defer netlinkHandle.Delete()
 
-		ifName := mechanism.GetInterfaceName(conn)
+		ifName := mechanism.ToInterfaceName(conn, isClient)
 
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {

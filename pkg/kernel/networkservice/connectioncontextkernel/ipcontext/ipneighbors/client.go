@@ -20,6 +20,7 @@ package ipneighbors
 
 import (
 	"context"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -38,7 +39,7 @@ func (i *ipNeighborsClient) Request(ctx context.Context, request *networkservice
 	if err != nil {
 		return nil, err
 	}
-	if err := create(ctx, conn); err != nil {
+	if err := create(ctx, conn, metadata.IsClient(i)); err != nil {
 		_, _ = i.Close(ctx, conn, opts...)
 		return nil, err
 	}
