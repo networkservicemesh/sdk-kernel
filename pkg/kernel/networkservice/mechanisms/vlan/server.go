@@ -21,12 +21,12 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"io"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	vlanmech "github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/vlan"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
@@ -35,15 +35,19 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
-type vlanServer struct{}
+type vlanServer struct {
+	links sync.Map
+}
 
 // NewServer returns a VLAN server chain element
 func NewServer() networkservice.NetworkServiceServer {
-	return &vlanServer{}
+	return &vlanServer{
+		links: sync.Map{},
+	}
 }
 
 func (s *vlanServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	if err := create(ctx, request.GetConnection(), metadata.IsClient(s)); err != nil {
+	if err := create(ctx, request.GetConnection(), &s.links); err != nil {
 		return nil, err
 	}
 	conn, err := next.Server(ctx).Request(ctx, request)
@@ -54,10 +58,11 @@ func (s *vlanServer) Close(ctx context.Context, conn *networkservice.Connection)
 	if _, err := next.Server(ctx).Close(ctx, conn); err != nil {
 		return nil, err
 	}
+	s.links.Delete(conn.GetId())
 	return &empty.Empty{}, nil
 }
 
-func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
+func create(ctx context.Context, conn *networkservice.Connection, links *sync.Map) error {
 	if mechanism := vlanmech.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		nsFilename := mechanism.GetNetNSURL()
 		if nsFilename == "" {
@@ -75,15 +80,16 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 
 		logger := log.FromContext(ctx).WithField("vlan", "create").
 			WithField("HostIfName", hostIfName).
-			WithField("HostNamespace", nsFilename).
+			WithField("Namespace", nsFilename).
 			WithField("VlanID", vlanID).
-			WithField("baseInterface", baseInterface).
-			WithField("isClient", isClient)
-		logger.Debug("request")
+			WithField("baseInterface", baseInterface)
+		logger.Debugf("Request for interface (connID=%v)", conn.GetId())
 
-		if isClient {
+		if _, ok = links.Load(conn.GetId()); ok {
+			logger.Debug("Link already added")
 			return nil
 		}
+
 		// TODO generate this based on conn id
 		tmpName, _ := generateRandomName(7)
 
@@ -117,7 +123,9 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		if err != nil {
 			return err
 		}
-		logger.Debug("Network interface set in client namespace")
+		logger.Info("Network interface set in client namespace")
+
+		links.Store(conn.GetId(), link)
 	}
 	return nil
 }
