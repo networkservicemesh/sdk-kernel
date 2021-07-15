@@ -63,7 +63,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	}
 	defer func() { _ = clientNetNS.Close() }()
 
-	ifName := mech.GetInterfaceName(request.GetConnection())
+	ifName := mech.GetInterfaceName()
 	err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, clientNetNS)
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connectio
 		}
 		defer func() { _ = clientNetNS.Close() }()
 
-		ifName = mech.GetInterfaceName(conn)
+		ifName = mech.GetInterfaceName()
 		if injectErr = moveInterfaceToAnotherNamespace(ifName, curNetNS, clientNetNS, curNetNS); injectErr != nil {
 			goto exit
 		}

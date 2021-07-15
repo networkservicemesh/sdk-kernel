@@ -58,7 +58,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		}
 		defer netlinkHandle.Delete()
 
-		ifName := mechanism.GetInterfaceName(conn)
+		ifName := mechanism.GetInterfaceName()
 
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {

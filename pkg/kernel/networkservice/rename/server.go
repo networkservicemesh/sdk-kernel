@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2020-2021 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -49,7 +49,7 @@ func (s *renameServer) Request(ctx context.Context, request *networkservice.Netw
 	if mech == nil {
 		return next.Server(ctx).Request(ctx, request)
 	}
-	ifName := mech.GetInterfaceName(request.GetConnection())
+	ifName := mech.GetInterfaceName()
 
 	vfConfig := vfconfig.Config(ctx)
 	if vfConfig == nil || vfConfig.VFInterfaceName == ifName {
@@ -82,7 +82,7 @@ func (s *renameServer) Close(ctx context.Context, conn *networkservice.Connectio
 
 	var renameErr error
 	if mech := kernel.ToMechanism(conn.GetMechanism()); mech != nil {
-		ifName := mech.GetInterfaceName(conn)
+		ifName := mech.GetInterfaceName()
 		if oldIfName, renamed := loadOldIfName(ctx, s.id); renamed {
 			renameErr = renameLink(ifName, oldIfName)
 		}
