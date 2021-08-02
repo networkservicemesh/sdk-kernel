@@ -24,6 +24,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
+	kernellink "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
@@ -62,9 +63,18 @@ func move(logger log.Logger, conn *networkservice.Connection, isMoveBack bool) e
 	defer func() { _ = targetNetNS.Close() }()
 
 	ifName := mech.GetInterfaceName()
+	// when link is already moved into target namespace, return immediately without error.
 	if !isMoveBack {
+		link, _ := kernellink.FindHostDevice("", ifName, targetNetNS)
+		if link != nil {
+			return nil
+		}
 		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
 	} else {
+		link, _ := kernellink.FindHostDevice("", ifName, curNetNS)
+		if link != nil {
+			return nil
+		}
 		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
 	}
 	if err != nil {
