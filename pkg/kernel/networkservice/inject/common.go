@@ -17,6 +17,8 @@
 package inject
 
 import (
+	"strings"
+
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -78,7 +80,11 @@ func move(logger log.Logger, conn *networkservice.Connection, isMoveBack bool) e
 		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
 	}
 	if err != nil {
-		logger.Warnf("failed to move network interface %s into the target namespace for connection %s", ifName, conn.GetId())
+		logger.Infof("can't move network interface %s into the target namespace for connection %s: %v", ifName, conn.GetId(), err)
+		// link may not be available at this stage (might be deleted in previous chain element itself) for veth case
+		if strings.Contains(err.Error(), "Link not found") {
+			return nil
+		}
 		return err
 	}
 	logger.Infof("moved network interface %s into the target namespace for connection %s", ifName, conn.GetId())
