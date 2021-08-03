@@ -47,7 +47,7 @@ func (i *vfEthernetClient) Request(ctx context.Context, request *networkservice.
 		return nil, err
 	}
 
-	if vfConfig := vfconfig.Config(ctx); vfConfig != nil {
+	if vfConfig, ok := vfconfig.Load(ctx, true); ok {
 		if err := vfCreate(vfConfig, conn, true); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()

@@ -60,7 +60,7 @@ func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS net
 	})
 }
 
-func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool) error {
+func move(ctx context.Context, conn *networkservice.Connection, isClient, isMoveBack bool) error {
 	mech := kernel.ToMechanism(conn.GetMechanism())
 	if mech == nil {
 		return nil
@@ -79,7 +79,10 @@ func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool)
 	}
 	defer func() { _ = contNetNS.Close() }()
 
-	vfConfig := vfconfig.Config(ctx)
+	vfConfig, ok := vfconfig.Load(ctx, isClient)
+	if !ok {
+		return nil
+	}
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
 		err = moveToContNetNS(vfConfig, ifName, hostNetNS, contNetNS)

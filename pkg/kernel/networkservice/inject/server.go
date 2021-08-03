@@ -26,6 +26,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
 
@@ -45,7 +46,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 
 	isEstablished := request.GetConnection().GetNextPathSegment() != nil
 	if !isEstablished {
-		if err := move(ctx, request.GetConnection(), false); err != nil {
+		if err := move(ctx, request.GetConnection(), metadata.IsClient(s), false); err != nil {
 			return nil, err
 		}
 	}
@@ -57,7 +58,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 		moveCtx, cancelMove := postponeCtxFunc()
 		defer cancelMove()
 
-		if moveRenameErr := move(moveCtx, request.GetConnection(), true); moveRenameErr != nil {
+		if moveRenameErr := move(moveCtx, request.GetConnection(), metadata.IsClient(s), true); moveRenameErr != nil {
 			err = errors.Wrapf(err, "server request failed, failed to move back the interface: %s", moveRenameErr.Error())
 		}
 	}
@@ -68,7 +69,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	moveRenameErr := move(ctx, conn, true)
+	moveRenameErr := move(ctx, conn, metadata.IsClient(s), true)
 
 	if err != nil && moveRenameErr != nil {
 		return nil, errors.Wrap(err, moveRenameErr.Error())
