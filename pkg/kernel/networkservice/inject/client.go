@@ -43,7 +43,7 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 	if err != nil {
 		return nil, err
 	}
-	if err := move(logger, conn, false); err != nil {
+	if err := moveAndRename(ctx, logger, conn, false); err != nil {
 		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
 			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
 		}
@@ -58,7 +58,7 @@ func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connectio
 
 	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	injectErr := move(logger, conn, true)
+	injectErr := moveAndRename(ctx, logger, conn, true)
 
 	if err != nil && injectErr != nil {
 		return nil, errors.Wrap(err, injectErr.Error())

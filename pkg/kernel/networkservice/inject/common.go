@@ -17,6 +17,8 @@
 package inject
 
 import (
+	"context"
+
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -24,6 +26,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
@@ -42,7 +45,21 @@ func moveInterfaceToAnotherNamespace(ifName string, curNetNS, fromNetNS, toNetNS
 	})
 }
 
-func move(logger log.Logger, conn *networkservice.Connection, isMoveBack bool) error {
+func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS netns.NsHandle) error {
+	return nshandle.RunIn(curNetNS, targetNetNS, func() error {
+		link, err := netlink.LinkByName(origIfName)
+		if err != nil {
+			return errors.Wrapf(err, "failed to get net interface: %v", origIfName)
+		}
+
+		if err = netlink.LinkSetName(link, desiredIfName); err != nil {
+			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
+		}
+		return nil
+	})
+}
+
+func moveAndRename(ctx context.Context, logger log.Logger, conn *networkservice.Connection, isMoveBack bool) error {
 	mech := kernel.ToMechanism(conn.GetMechanism())
 	if mech == nil {
 		return nil
@@ -61,11 +78,26 @@ func move(logger log.Logger, conn *networkservice.Connection, isMoveBack bool) e
 	}
 	defer func() { _ = targetNetNS.Close() }()
 
+	vfConfig := vfconfig.Config(ctx)
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
-		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
+		if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
+			err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, curNetNS, targetNetNS)
+			if err == nil {
+				err = renameInterface(vfConfig.VFInterfaceName, ifName, curNetNS, targetNetNS)
+			}
+		} else {
+			err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
+		}
 	} else {
-		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
+		if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
+			err = renameInterface(ifName, vfConfig.VFInterfaceName, curNetNS, targetNetNS)
+			if err == nil {
+				err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, targetNetNS, curNetNS)
+			}
+		} else {
+			err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
+		}
 	}
 	if err != nil {
 		logger.Warnf("failed to move network interface %s into the target namespace for connection %s", ifName, conn.GetId())
