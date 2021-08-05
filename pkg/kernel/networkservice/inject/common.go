@@ -18,6 +18,7 @@ package inject
 
 import (
 	"context"
+	"strings"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
@@ -26,6 +27,7 @@ import (
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 
+	kernellink "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
@@ -59,7 +61,7 @@ func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS net
 	})
 }
 
-func moveAndRename(ctx context.Context, logger log.Logger, conn *networkservice.Connection, isMoveBack bool) error {
+func move(ctx context.Context, logger log.Logger, conn *networkservice.Connection, isMoveBack bool) error {
 	mech := kernel.ToMechanism(conn.GetMechanism())
 	if mech == nil {
 		return nil
@@ -81,28 +83,55 @@ func moveAndRename(ctx context.Context, logger log.Logger, conn *networkservice.
 	vfConfig := vfconfig.Config(ctx)
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
-		if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
-			err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, curNetNS, targetNetNS)
-			if err == nil {
-				err = renameInterface(vfConfig.VFInterfaceName, ifName, curNetNS, targetNetNS)
-			}
-		} else {
-			err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
-		}
+		err = moveToContNetNS(vfConfig, ifName, curNetNS, targetNetNS)
 	} else {
-		if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
-			err = renameInterface(ifName, vfConfig.VFInterfaceName, curNetNS, targetNetNS)
-			if err == nil {
-				err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, targetNetNS, curNetNS)
-			}
-		} else {
-			err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
-		}
+		err = moveToHostNetNS(vfConfig, ifName, curNetNS, targetNetNS)
 	}
 	if err != nil {
+		// link may not be available at this stage (might be deleted in previous chain element itself) for veth case
+		if strings.Contains(err.Error(), "Link not found") {
+			return nil
+		}
 		logger.Warnf("failed to move network interface %s into the target namespace for connection %s", ifName, conn.GetId())
 		return err
 	}
-	logger.Infof("moved network interface %s into the target namespace for connection %s", ifName, conn.GetId())
 	return nil
+}
+
+func moveToContNetNS(vfConfig *vfconfig.VFConfig, ifName string, curNetNS, targetNetNS netns.NsHandle) (err error) {
+	link, _ := kernellink.FindHostDevice("", ifName, targetNetNS)
+	if link != nil {
+		return
+	}
+	if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
+		err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, curNetNS, targetNetNS)
+		if err == nil {
+			err = renameInterface(vfConfig.VFInterfaceName, ifName, curNetNS, targetNetNS)
+		}
+	} else {
+		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
+	}
+	return
+}
+
+func moveToHostNetNS(vfConfig *vfconfig.VFConfig, ifName string, curNetNS, targetNetNS netns.NsHandle) (err error) {
+	if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
+		link, _ := kernellink.FindHostDevice("", vfConfig.VFInterfaceName, curNetNS)
+		if link != nil {
+			// TODO: rename (if necessary) interface back to its original name.
+			// FindHostDevice with vf's pci address in this case.
+			return
+		}
+		err = renameInterface(ifName, vfConfig.VFInterfaceName, curNetNS, targetNetNS)
+		if err == nil {
+			err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, targetNetNS, curNetNS)
+		}
+	} else {
+		link, _ := kernellink.FindHostDevice("", ifName, curNetNS)
+		if link != nil {
+			return nil
+		}
+		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
+	}
+	return
 }
