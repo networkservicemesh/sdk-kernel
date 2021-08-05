@@ -22,7 +22,6 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -61,7 +60,7 @@ func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS net
 	})
 }
 
-func move(ctx context.Context, logger log.Logger, conn *networkservice.Connection, isMoveBack bool) error {
+func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool) error {
 	mech := kernel.ToMechanism(conn.GetMechanism())
 	if mech == nil {
 		return nil
@@ -92,7 +91,6 @@ func move(ctx context.Context, logger log.Logger, conn *networkservice.Connectio
 		if strings.Contains(err.Error(), "Link not found") {
 			return nil
 		}
-		logger.Warnf("failed to move network interface %s into the target namespace for connection %s", ifName, conn.GetId())
 		return err
 	}
 	return nil

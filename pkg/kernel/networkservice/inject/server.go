@@ -45,14 +45,14 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 		return next.Server(ctx).Request(ctx, request)
 	}
 
-	if err := move(ctx, logger, request.GetConnection(), false); err != nil {
+	if err := move(ctx, request.GetConnection(), false); err != nil {
 		return nil, err
 	}
 
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
-		moveRenameErr := move(ctx, logger, request.GetConnection(), true)
-		if err != nil {
+		moveRenameErr := move(ctx, request.GetConnection(), true)
+		if moveRenameErr != nil {
 			logger.Warnf("server request failed, failed to move back the interface: %v", moveRenameErr)
 		}
 	}
@@ -60,11 +60,9 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("injectServer", "Close")
-
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	moveRenameErr := move(ctx, logger, conn, true)
+	moveRenameErr := move(ctx, conn, true)
 
 	if err != nil && moveRenameErr != nil {
 		return nil, errors.Wrap(err, moveRenameErr.Error())
