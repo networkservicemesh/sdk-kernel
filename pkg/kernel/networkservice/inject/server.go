@@ -39,18 +39,18 @@ func NewServer() networkservice.NetworkServiceServer {
 
 func (s *injectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("injectServer", "Request")
-
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
 	if mech == nil {
 		return next.Server(ctx).Request(ctx, request)
 	}
-
-	if err := move(ctx, request.GetConnection(), false); err != nil {
-		return nil, err
+	if !isEstablished {
+		if err := move(ctx, request.GetConnection(), false); err != nil {
+			return nil, err
+		}
 	}
-
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil {
+	if err != nil && !isEstablished {
 		moveRenameErr := move(ctx, request.GetConnection(), true)
 		if moveRenameErr != nil {
 			logger.Warnf("server request failed, failed to move back the interface: %v", moveRenameErr)

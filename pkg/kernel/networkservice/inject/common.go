@@ -66,25 +66,25 @@ func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool)
 		return nil
 	}
 
-	curNetNS, err := nshandle.Current()
+	hostNetNS, err := nshandle.Current()
 	if err != nil {
 		return err
 	}
-	defer func() { _ = curNetNS.Close() }()
+	defer func() { _ = hostNetNS.Close() }()
 
-	var targetNetNS netns.NsHandle
-	targetNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
+	var contNetNS netns.NsHandle
+	contNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
 	if err != nil {
 		return err
 	}
-	defer func() { _ = targetNetNS.Close() }()
+	defer func() { _ = contNetNS.Close() }()
 
 	vfConfig := vfconfig.Config(ctx)
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
-		err = moveToContNetNS(vfConfig, ifName, curNetNS, targetNetNS)
+		err = moveToContNetNS(vfConfig, ifName, hostNetNS, contNetNS)
 	} else {
-		err = moveToHostNetNS(vfConfig, ifName, curNetNS, targetNetNS)
+		err = moveToHostNetNS(vfConfig, ifName, hostNetNS, contNetNS)
 	}
 	if err != nil {
 		// link may not be available at this stage (might be deleted in previous chain element itself) for veth case
@@ -96,40 +96,40 @@ func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool)
 	return nil
 }
 
-func moveToContNetNS(vfConfig *vfconfig.VFConfig, ifName string, curNetNS, targetNetNS netns.NsHandle) (err error) {
-	link, _ := kernellink.FindHostDevice("", ifName, targetNetNS)
+func moveToContNetNS(vfConfig *vfconfig.VFConfig, ifName string, hostNetNS, contNetNS netns.NsHandle) (err error) {
+	link, _ := kernellink.FindHostDevice("", ifName, contNetNS)
 	if link != nil {
 		return
 	}
 	if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
-		err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, curNetNS, targetNetNS)
+		err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, hostNetNS, hostNetNS, contNetNS)
 		if err == nil {
-			err = renameInterface(vfConfig.VFInterfaceName, ifName, curNetNS, targetNetNS)
+			err = renameInterface(vfConfig.VFInterfaceName, ifName, hostNetNS, contNetNS)
 		}
 	} else {
-		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, curNetNS, targetNetNS)
+		err = moveInterfaceToAnotherNamespace(ifName, hostNetNS, hostNetNS, contNetNS)
 	}
 	return
 }
 
-func moveToHostNetNS(vfConfig *vfconfig.VFConfig, ifName string, curNetNS, targetNetNS netns.NsHandle) (err error) {
+func moveToHostNetNS(vfConfig *vfconfig.VFConfig, ifName string, hostNetNS, contNetNS netns.NsHandle) (err error) {
 	if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
-		link, _ := kernellink.FindHostDevice("", vfConfig.VFInterfaceName, curNetNS)
+		link, _ := kernellink.FindHostDevice("", vfConfig.VFInterfaceName, hostNetNS)
 		if link != nil {
 			// TODO: rename (if necessary) interface back to its original name.
 			// FindHostDevice with vf's pci address in this case.
 			return
 		}
-		err = renameInterface(ifName, vfConfig.VFInterfaceName, curNetNS, targetNetNS)
+		err = renameInterface(ifName, vfConfig.VFInterfaceName, hostNetNS, contNetNS)
 		if err == nil {
-			err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, curNetNS, targetNetNS, curNetNS)
+			err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, hostNetNS, contNetNS, hostNetNS)
 		}
 	} else {
-		link, _ := kernellink.FindHostDevice("", ifName, curNetNS)
+		link, _ := kernellink.FindHostDevice("", ifName, hostNetNS)
 		if link != nil {
 			return nil
 		}
-		err = moveInterfaceToAnotherNamespace(ifName, curNetNS, targetNetNS, curNetNS)
+		err = moveInterfaceToAnotherNamespace(ifName, hostNetNS, contNetNS, hostNetNS)
 	}
 	return
 }
