@@ -87,8 +87,9 @@ func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool)
 		err = moveToHostNetNS(vfConfig, ifName, hostNetNS, contNetNS)
 	}
 	if err != nil {
-		// link may not be available at this stage (might be deleted in previous chain element itself) for veth case
-		if strings.Contains(err.Error(), "Link not found") {
+		// link may not be available at this stage for cases like veth pair (might be deleted in previous chain element itself)
+		// or container would have killed already (example: due to OOM error or kubectl delete)
+		if strings.Contains(err.Error(), "Link not found") || strings.Contains(err.Error(), "bad file descriptor") {
 			return nil
 		}
 		return err
