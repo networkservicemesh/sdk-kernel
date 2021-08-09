@@ -45,6 +45,7 @@ jobs:
       matrix:
         repository:
           - sdk-sriov
+          - sdk-ovs
     name: Update ${{ matrix.repository }}
     needs: create-release
     runs-on: ubuntu-latest
