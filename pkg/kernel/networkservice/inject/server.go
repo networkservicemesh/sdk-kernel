@@ -39,38 +39,36 @@ func NewServer() networkservice.NetworkServiceServer {
 
 func (s *injectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("injectServer", "Request")
-
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
 	mech := kernel.ToMechanism(request.GetConnection().GetMechanism())
 	if mech == nil {
 		return next.Server(ctx).Request(ctx, request)
 	}
-
-	if err := move(logger, request.GetConnection(), false); err != nil {
-		return nil, err
+	if !isEstablished {
+		if err := move(ctx, request.GetConnection(), false); err != nil {
+			return nil, err
+		}
 	}
-
 	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil {
-		err = move(logger, request.GetConnection(), true)
-		if err != nil {
-			logger.Warnf("server request failed, failed to move back the interface: %v", err)
+	if err != nil && !isEstablished {
+		moveRenameErr := move(ctx, request.GetConnection(), true)
+		if moveRenameErr != nil {
+			logger.Warnf("server request failed, failed to move back the interface: %v", moveRenameErr)
 		}
 	}
 	return conn, err
 }
 
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("injectServer", "Close")
-
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	injectErr := move(logger, conn, true)
+	moveRenameErr := move(ctx, conn, true)
 
-	if err != nil && injectErr != nil {
-		return nil, errors.Wrap(err, injectErr.Error())
+	if err != nil && moveRenameErr != nil {
+		return nil, errors.Wrap(err, moveRenameErr.Error())
 	}
-	if injectErr != nil {
-		return nil, injectErr
+	if moveRenameErr != nil {
+		return nil, moveRenameErr
 	}
 	return &empty.Empty{}, err
 }

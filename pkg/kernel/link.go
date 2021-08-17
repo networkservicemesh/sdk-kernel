@@ -158,6 +158,16 @@ func (l *link) SetName(name string) error {
 func FindHostDevice(pciAddress, name string, namespaces ...netns.NsHandle) (Link, error) {
 	// TODO: add support for shared l interfaces (like Mellanox NICs)
 
+	current, err := nshandle.Current()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := netns.Set(current); err != nil {
+			panic(errors.Wrapf(err, "failed to switch back to the current net NS: %v", current).Error())
+		}
+	}()
+
 	attempts := []func(netns.NsHandle, string, string) (netlink.Link, error){
 		searchByPCIAddress,
 		searchByName,

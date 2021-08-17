@@ -39,26 +39,27 @@ func NewClient() networkservice.NetworkServiceClient {
 func (c *injectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest,
 	opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	logger := log.FromContext(ctx).WithField("injectClient", "Request")
+	isEstablished := request.GetConnection().GetNextPathSegment() != nil
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil {
 		return nil, err
 	}
-	if err := move(logger, conn, false); err != nil {
-		if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
-			logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+	if !isEstablished {
+		if err := move(ctx, conn, false); err != nil {
+			if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
+				logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 	return conn, nil
 }
 
 func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connection,
 	opts ...grpc.CallOption) (*empty.Empty, error) {
-	logger := log.FromContext(ctx).WithField("injectClient", "Close")
-
 	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	injectErr := move(logger, conn, true)
+	injectErr := move(ctx, conn, true)
 
 	if err != nil && injectErr != nil {
 		return nil, errors.Wrap(err, injectErr.Error())
