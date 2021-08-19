@@ -1,4 +1,4 @@
-// Copyright (c) Nordix Foundation.
+// Copyright (c) 2021 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -19,7 +19,6 @@
 package ipneighbors
 
 import (
-	"context"
 	"net"
 	"os"
 
@@ -31,7 +30,7 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
-func create(ctx context.Context, conn *networkservice.Connection) error {
+func create(conn *networkservice.Connection) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
@@ -53,7 +52,6 @@ func create(ctx context.Context, conn *networkservice.Connection) error {
 		if err := setIPNeighbors(conn.GetContext().GetIpContext().GetIpNeighbors(), l); err != nil {
 			return errors.WithStack(err)
 		}
-
 	}
 	return nil
 }

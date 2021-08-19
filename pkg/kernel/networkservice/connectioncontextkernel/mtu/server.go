@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2021 Nordix Foundation.
 //
+// Copyright (c) 2021 Doc.ai and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +26,12 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
+
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
 
 type mtuServer struct {
@@ -60,13 +65,25 @@ func NewServer() networkservice.NetworkServiceServer {
 }
 
 func (m *mtuServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
+	logger := log.FromContext(ctx).WithField("mutServer", "Request")
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := setMTU(ctx, conn); err != nil {
-		log.FromContext(ctx).Debugf("about to Close due to error: %+v", err)
-		_, _ = m.Close(ctx, conn)
+		logger.Debugf("about to Close due to error: %s", err.Error())
+
+		closeCtx, cancelClose := postponeCtxFunc()
+		defer cancelClose()
+
+		if _, closeErr := m.Close(closeCtx, conn); closeErr != nil {
+			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		}
+
 		return nil, err
 	}
 	return conn, nil
