@@ -18,7 +18,6 @@ jobs:
         repository:
           - sdk-sriov
           - sdk-vpp
-          - sdk-ovs
     name: Update ${{ matrix.repository }}
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.actor == 'nsmbot' || github.event_name == 'push' }}

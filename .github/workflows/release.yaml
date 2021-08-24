@@ -46,7 +46,6 @@ jobs:
         repository:
           - sdk-sriov
           - sdk-vpp
-          - sdk-ovs
     name: Update ${{ matrix.repository }}
     needs: create-release
     runs-on: ubuntu-latest
