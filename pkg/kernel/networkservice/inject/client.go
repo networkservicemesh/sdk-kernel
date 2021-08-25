@@ -20,11 +20,12 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
+
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
 
 type injectClient struct{}
@@ -36,27 +37,33 @@ func NewClient() networkservice.NetworkServiceClient {
 	return &injectClient{}
 }
 
-func (c *injectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest,
-	opts ...grpc.CallOption) (*networkservice.Connection, error) {
-	logger := log.FromContext(ctx).WithField("injectClient", "Request")
+func (c *injectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
 	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil {
 		return nil, err
 	}
+
 	if !isEstablished {
 		if err := move(ctx, conn, false); err != nil {
-			if _, closeErr := next.Client(ctx).Close(ctx, conn, opts...); closeErr != nil {
-				logger.Errorf("failed to close failed connection: %s %s", conn.GetId(), closeErr.Error())
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
+
+			if _, closeErr := c.Close(closeCtx, conn, opts...); closeErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
 			}
+
 			return nil, err
 		}
 	}
+
 	return conn, nil
 }
 
-func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connection,
-	opts ...grpc.CallOption) (*empty.Empty, error) {
+func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
 
 	injectErr := move(ctx, conn, true)

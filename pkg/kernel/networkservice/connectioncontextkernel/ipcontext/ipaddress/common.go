@@ -90,15 +90,10 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			return errors.Wrapf(err, "failed to set %s = 0", disableIPv6Filename)
 		}
 
-		nsHandle, err := nshandle.FromURL(mechanism.GetNetNSURL())
-		defer func() { _ = nsHandle.Close() }()
-		if err != nil {
-			return errors.Wrapf(err, "failed to retrieve nsHandle for %+v", mechanism)
-		}
 		ch := make(chan netlink.AddrUpdate)
 		done := make(chan struct{})
 		defer close(done)
-		if err := netlink.AddrSubscribeAt(nsHandle, ch, done); err != nil {
+		if err := netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
 			return errors.Wrapf(err, "failed to subscribe for interface address updates")
 		}
 		for _, ipNet := range ipNets {

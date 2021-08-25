@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2021 Nordix Foundation.
 //
+// Copyright (c) 2021 Doc.ai and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,11 +26,13 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
 
 type ipaddressClient struct{}
@@ -61,14 +65,24 @@ func NewClient() networkservice.NetworkServiceClient {
 }
 
 func (i *ipaddressClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
+
 	conn, err := next.Client(ctx).Request(ctx, request, opts...)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := create(ctx, conn, metadata.IsClient(i)); err != nil {
-		_, _ = i.Close(ctx, conn, opts...)
+		closeCtx, cancelClose := postponeCtxFunc()
+		defer cancelClose()
+
+		if _, closeErr := i.Close(closeCtx, conn, opts...); closeErr != nil {
+			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+		}
+
 		return nil, err
 	}
+
 	return conn, nil
 }
 
