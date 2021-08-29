@@ -49,6 +49,8 @@ type Link interface {
 	MoveToNetns(target netns.NsHandle) error
 	SetAdminState(state State) error
 	SetName(name string) error
+	GetName() string
+	GetLink() netlink.Link
 }
 
 // link provides Link interface implementation
@@ -151,6 +153,14 @@ func (l *link) SetName(name string) error {
 	}
 
 	return nil
+}
+
+func (l *link) GetName() string {
+	return l.link.Attrs().Name
+}
+
+func (l *link) GetLink() netlink.Link {
+	return l.link
 }
 
 // FindHostDevice returns a new instance of link representing host device, based on the PCI

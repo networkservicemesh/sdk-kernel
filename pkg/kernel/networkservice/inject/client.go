@@ -25,6 +25,7 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
 
@@ -48,7 +49,7 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 	}
 
 	if !isEstablished {
-		if err := move(ctx, conn, false); err != nil {
+		if err := move(ctx, conn, metadata.IsClient(c), false); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
 
@@ -66,7 +67,7 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	injectErr := move(ctx, conn, true)
+	injectErr := move(ctx, conn, metadata.IsClient(c), true)
 
 	if err != nil && injectErr != nil {
 		return nil, errors.Wrap(err, injectErr.Error())

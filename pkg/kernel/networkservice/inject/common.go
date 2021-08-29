@@ -60,7 +60,7 @@ func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS net
 	})
 }
 
-func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool) error {
+func move(ctx context.Context, conn *networkservice.Connection, isClient, isMoveBack bool) error {
 	mech := kernel.ToMechanism(conn.GetMechanism())
 	if mech == nil {
 		return nil
@@ -79,7 +79,10 @@ func move(ctx context.Context, conn *networkservice.Connection, isMoveBack bool)
 	}
 	defer func() { _ = contNetNS.Close() }()
 
-	vfConfig := vfconfig.Config(ctx)
+	vfConfig, ok := vfconfig.Load(ctx, isClient)
+	if !ok {
+		return nil
+	}
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
 		err = moveToContNetNS(vfConfig, ifName, hostNetNS, contNetNS)
@@ -115,10 +118,14 @@ func moveToContNetNS(vfConfig *vfconfig.VFConfig, ifName string, hostNetNS, cont
 
 func moveToHostNetNS(vfConfig *vfconfig.VFConfig, ifName string, hostNetNS, contNetNS netns.NsHandle) (err error) {
 	if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
-		link, _ := kernellink.FindHostDevice("", vfConfig.VFInterfaceName, hostNetNS)
+		link, _ := kernellink.FindHostDevice(vfConfig.VFPCIAddress, vfConfig.VFInterfaceName, hostNetNS)
 		if link != nil {
-			// TODO: rename (if necessary) interface back to its original name.
-			// FindHostDevice with vf's pci address in this case.
+			linkName := link.GetName()
+			if linkName != vfConfig.VFInterfaceName {
+				if err = netlink.LinkSetName(link.GetLink(), vfConfig.VFInterfaceName); err != nil {
+					err = errors.Wrapf(err, "failed to rename interface from %s to %s", linkName, vfConfig.VFInterfaceName)
+				}
+			}
 			return
 		}
 		err = renameInterface(ifName, vfConfig.VFInterfaceName, hostNetNS, contNetNS)
