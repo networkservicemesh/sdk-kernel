@@ -53,9 +53,18 @@ func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS net
 			return errors.Wrapf(err, "failed to get net interface: %v", origIfName)
 		}
 
+		if err = netlink.LinkSetDown(link); err != nil {
+			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
+		}
+
 		if err = netlink.LinkSetName(link, desiredIfName); err != nil {
 			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
 		}
+
+		if err = netlink.LinkSetUp(link); err != nil {
+			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
+		}
+
 		return nil
 	})
 }
