@@ -75,6 +75,11 @@ func move(ctx context.Context, conn *networkservice.Connection, isClient, isMove
 		return nil
 	}
 
+	vfConfig, ok := vfconfig.Load(ctx, isClient)
+	if !ok {
+		return nil
+	}
+
 	hostNetNS, err := nshandle.Current()
 	if err != nil {
 		return err
@@ -86,15 +91,15 @@ func move(ctx context.Context, conn *networkservice.Connection, isClient, isMove
 	if err != nil {
 		return err
 	}
+	if !contNetNS.IsOpen() && isMoveBack {
+		contNetNS = vfConfig.ContNetNS
+	}
 	defer func() { _ = contNetNS.Close() }()
 
-	vfConfig, ok := vfconfig.Load(ctx, isClient)
-	if !ok {
-		return nil
-	}
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
 		err = moveToContNetNS(vfConfig, ifName, hostNetNS, contNetNS)
+		vfConfig.ContNetNS = contNetNS
 	} else {
 		err = moveToHostNetNS(vfConfig, ifName, hostNetNS, contNetNS)
 	}
