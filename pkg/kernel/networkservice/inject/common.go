@@ -75,6 +75,11 @@ func move(ctx context.Context, conn *networkservice.Connection, isClient, isMove
 		return nil
 	}
 
+	vfConfig, ok := vfconfig.Load(ctx, isClient)
+	if !ok {
+		return nil
+	}
+
 	hostNetNS, err := nshandle.Current()
 	if err != nil {
 		return err
@@ -86,15 +91,21 @@ func move(ctx context.Context, conn *networkservice.Connection, isClient, isMove
 	if err != nil {
 		return err
 	}
-	defer func() { _ = contNetNS.Close() }()
-
-	vfConfig, ok := vfconfig.Load(ctx, isClient)
-	if !ok {
-		return nil
+	if !contNetNS.IsOpen() && isMoveBack {
+		contNetNS = vfConfig.ContNetNS
 	}
+
+	// keep NSE container's net ns open until connection close is done,.
+	// this would properly move back VF into host net namespace even when
+	// container is accidentally deleted before close.
+	if !isClient || isMoveBack {
+		defer func() { _ = contNetNS.Close() }()
+	}
+
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
 		err = moveToContNetNS(vfConfig, ifName, hostNetNS, contNetNS)
+		vfConfig.ContNetNS = contNetNS
 	} else {
 		err = moveToHostNetNS(vfConfig, ifName, hostNetNS, contNetNS)
 	}

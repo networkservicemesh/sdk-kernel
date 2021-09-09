@@ -22,6 +22,8 @@ package vfconfig
 import (
 	"context"
 
+	"github.com/vishvananda/netns"
+
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 )
 
@@ -37,6 +39,8 @@ type VFConfig struct {
 	VFPCIAddress string
 	// VFNum is a VF num for the parent PF
 	VFNum int
+	// ContNetNS is a container netns id on which VF is attached
+	ContNetNS netns.NsHandle
 }
 
 // Store sets the VFConfig stored in per Connection.Id metadata.
