@@ -94,7 +94,13 @@ func move(ctx context.Context, conn *networkservice.Connection, isClient, isMove
 	if !contNetNS.IsOpen() && isMoveBack {
 		contNetNS = vfConfig.ContNetNS
 	}
-	defer func() { _ = contNetNS.Close() }()
+
+	// keep NSE container's net ns open until connection close is done,.
+	// this would properly move back VF into host net namespace even when
+	// container is accidentally deleted before close.
+	if !isClient || isMoveBack {
+		defer func() { _ = contNetNS.Close() }()
+	}
 
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
