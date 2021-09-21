@@ -27,6 +27,8 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
+
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
 type injectClient struct{}
@@ -39,7 +41,10 @@ func NewClient() networkservice.NetworkServiceClient {
 }
 
 func (c *injectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
-	isEstablished := request.GetConnection().GetNextPathSegment() != nil
+	var isEstablished bool
+	if vfConfig, ok := vfconfig.Load(ctx, metadata.IsClient(c)); ok {
+		isEstablished = int(vfConfig.ContNetNS) != 0
+	}
 
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
