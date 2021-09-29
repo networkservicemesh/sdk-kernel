@@ -139,7 +139,10 @@ func waitForIPNets(ctx context.Context, ch chan netlink.AddrUpdate, l netlink.Li
 		select {
 		case <-ctx.Done():
 			return errors.Wrapf(ctx.Err(), "timeout waiting for update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
-		case update := <-ch:
+		case update, ok := <-ch:
+			if !ok {
+				return errors.Errorf("failed to receive update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
+			}
 			if update.LinkIndex == l.Attrs().Index {
 				for i := range ipNets {
 					if update.LinkAddress.IP.Equal(ipNets[i].IP) && update.Flags&unix.IFA_F_TENTATIVE == 0 {
