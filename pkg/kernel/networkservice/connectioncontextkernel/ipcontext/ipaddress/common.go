@@ -92,10 +92,18 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 
 		ch := make(chan netlink.AddrUpdate)
 		done := make(chan struct{})
-		defer close(done)
+
 		if err := netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
 			return errors.Wrapf(err, "failed to subscribe for interface address updates")
 		}
+
+		defer func() {
+			close(done)
+			// `ch` should be fully read after the `done` close to prevent goroutine leak in `netlink.AddrSubscribeAt`
+			for range ch {
+			}
+		}()
+
 		for _, ipNet := range ipNets {
 			now := time.Now()
 			addr := &netlink.Addr{
@@ -131,7 +139,10 @@ func waitForIPNets(ctx context.Context, ch chan netlink.AddrUpdate, l netlink.Li
 		select {
 		case <-ctx.Done():
 			return errors.Wrapf(ctx.Err(), "timeout waiting for update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
-		case update := <-ch:
+		case update, ok := <-ch:
+			if !ok {
+				return errors.Errorf("failed to receive update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
+			}
 			if update.LinkIndex == l.Attrs().Index {
 				for i := range ipNets {
 					if update.LinkAddress.IP.Equal(ipNets[i].IP) && update.Flags&unix.IFA_F_TENTATIVE == 0 {
