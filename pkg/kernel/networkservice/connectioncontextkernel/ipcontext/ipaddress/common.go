@@ -100,8 +100,10 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		defer func() {
 			close(done)
 			// `ch` should be fully read after the `done` close to prevent goroutine leak in `netlink.AddrSubscribeAt`
-			for range ch {
-			}
+			go func() {
+				for range ch {
+				}
+			}()
 		}()
 
 		for _, ipNet := range ipNets {
