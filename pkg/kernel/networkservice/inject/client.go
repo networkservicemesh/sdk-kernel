@@ -18,6 +18,7 @@ package inject
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -31,13 +32,16 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
-type injectClient struct{}
+type injectClient struct {
+	vfRefCountMap   map[string]int
+	vfRefCountMutex sync.Mutex
+}
 
 // NewClient - returns a new networkservice.NetworkServiceClient that moves given network
 // interface into the Endpoint's pod network namespace on Request and back to Forwarder's
 // network namespace on Close
 func NewClient() networkservice.NetworkServiceClient {
-	return &injectClient{}
+	return &injectClient{vfRefCountMap: make(map[string]int)}
 }
 
 func (c *injectClient) Request(ctx context.Context, request *networkservice.NetworkServiceRequest, opts ...grpc.CallOption) (*networkservice.Connection, error) {
@@ -54,7 +58,7 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 	}
 
 	if !isEstablished {
-		if err := move(ctx, conn, metadata.IsClient(c), false); err != nil {
+		if err := move(ctx, conn, c.vfRefCountMap, &c.vfRefCountMutex, metadata.IsClient(c), false); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
 
@@ -72,7 +76,7 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
 	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
 
-	injectErr := move(ctx, conn, metadata.IsClient(c), true)
+	injectErr := move(ctx, conn, c.vfRefCountMap, &c.vfRefCountMutex, metadata.IsClient(c), true)
 
 	if err != nil && injectErr != nil {
 		return nil, errors.Wrap(err, injectErr.Error())
