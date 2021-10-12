@@ -176,6 +176,7 @@ func FindHostDevice(pciAddress, name string, namespaces ...netns.NsHandle) (Link
 		if err := netns.Set(current); err != nil {
 			panic(errors.Wrapf(err, "failed to switch back to the current net NS: %v", current).Error())
 		}
+		_ = current.Close()
 	}()
 
 	attempts := []func(netns.NsHandle, string, string) (netlink.Link, error){
@@ -259,6 +260,7 @@ func GetNetlinkHandle(urlString string) (*netlink.Handle, error) {
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	defer func() { _ = curNSHandle.Close() }()
 
 	nsHandle, err := nshandle.FromURL(urlString)
 	if err != nil {
