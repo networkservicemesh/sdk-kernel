@@ -58,6 +58,17 @@ func (i *vfEthernetClient) Request(ctx context.Context, request *networkservice.
 
 			return nil, err
 		}
+	} else {
+		if err := setKernelHwAddress(ctx, conn, true); err != nil {
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
+
+			if _, closeErr := i.Close(closeCtx, conn); closeErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+			}
+
+			return nil, err
+		}
 	}
 
 	return conn, nil
