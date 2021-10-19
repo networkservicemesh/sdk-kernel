@@ -35,7 +35,7 @@ import (
 )
 
 func create(ctx context.Context, conn *networkservice.Connection, isClient bool) error {
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)

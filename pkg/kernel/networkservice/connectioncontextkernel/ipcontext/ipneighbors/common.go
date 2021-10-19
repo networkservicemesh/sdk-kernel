@@ -31,7 +31,7 @@ import (
 )
 
 func create(conn *networkservice.Connection) error {
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)

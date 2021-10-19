@@ -19,6 +19,7 @@ package inject
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -32,12 +33,15 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
 
-type injectServer struct{}
+type injectServer struct {
+	vfRefCountMap   map[string]int
+	vfRefCountMutex sync.Mutex
+}
 
 // NewServer - returns a new networkservice.NetworkServiceServer that moves given network interface into the Client's
 // pod network namespace on Request and back to Forwarder's network namespace on Close
 func NewServer() networkservice.NetworkServiceServer {
-	return &injectServer{}
+	return &injectServer{vfRefCountMap: make(map[string]int)}
 }
 
 func (s *injectServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
@@ -52,7 +56,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 	}
 
 	if !isEstablished {
-		if err := move(ctx, request.GetConnection(), metadata.IsClient(s), false); err != nil {
+		if err := move(ctx, request.GetConnection(), s.vfRefCountMap, &s.vfRefCountMutex, metadata.IsClient(s), false); err != nil {
 			return nil, err
 		}
 	}
@@ -64,7 +68,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 		moveCtx, cancelMove := postponeCtxFunc()
 		defer cancelMove()
 
-		if moveRenameErr := move(moveCtx, request.GetConnection(), metadata.IsClient(s), true); moveRenameErr != nil {
+		if moveRenameErr := move(moveCtx, request.GetConnection(), s.vfRefCountMap, &s.vfRefCountMutex, metadata.IsClient(s), true); moveRenameErr != nil {
 			err = errors.Wrapf(err, "server request failed, failed to move back the interface: %s", moveRenameErr.Error())
 		}
 	}
@@ -75,7 +79,7 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	_, err := next.Server(ctx).Close(ctx, conn)
 
-	moveRenameErr := move(ctx, conn, metadata.IsClient(s), true)
+	moveRenameErr := move(ctx, conn, s.vfRefCountMap, &s.vfRefCountMutex, metadata.IsClient(s), true)
 
 	if err != nil && moveRenameErr != nil {
 		return nil, errors.Wrap(err, moveRenameErr.Error())

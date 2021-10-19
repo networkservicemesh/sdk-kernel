@@ -33,7 +33,7 @@ import (
 )
 
 func setMTU(ctx context.Context, conn *networkservice.Connection) error {
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		// Note: These are switched from normal because if we are the client, we need to assign the IP
 		// in the Endpoints NetNS for the Dst.  If we are the *server* we need to assign the IP for the
 		// clients NetNS (ie the source).
