@@ -6,7 +6,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/uuid v1.1.2
 	github.com/networkservicemesh/api v1.0.1-0.20210907194827-9a36433d7d6e
-	github.com/networkservicemesh/sdk v0.5.1-0.20211027122123-f20e20a27721
+	github.com/networkservicemesh/sdk v0.5.1-0.20211102013519-0eabc52a2346
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.0
