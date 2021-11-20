@@ -68,7 +68,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			}
 		}
 		for _, route := range routes {
-			if err := routeAdd(ctx, netlinkHandle, l, netlink.SCOPE_LINK, route); err != nil {
+			if err := routeAdd(ctx, netlinkHandle, l, netlink.SCOPE_UNIVERSE, route); err != nil {
 				return err
 			}
 		}
@@ -80,17 +80,31 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, scope
 	if route.GetPrefixIPNet() == nil {
 		return errors.New("kernelRoute prefix must not be nil")
 	}
+	dst := route.GetPrefixIPNet()
+	dst.IP = dst.IP.Mask(dst.Mask)
 	kernelRoute := &netlink.Route{
 		LinkIndex: l.Attrs().Index,
 		Scope:     scope,
-		Dst:       route.GetPrefixIPNet(),
+		Dst:       dst,
 	}
 	gw := route.GetNextHopIP()
 	if gw != nil {
 		kernelRoute.Gw = gw
+		if scope != netlink.SCOPE_LINK {
+			kernelRoute.SetFlag(netlink.FLAG_ONLINK)
+		}
 	}
+
 	now := time.Now()
 	if err := handle.RouteReplace(kernelRoute); err != nil {
+		log.FromContext(ctx).
+			WithField("link.Name", l.Attrs().Name).
+			WithField("Dst", kernelRoute.Dst).
+			WithField("Gw", kernelRoute.Gw).
+			WithField("Scope", kernelRoute.Scope).
+			WithField("Flags", kernelRoute.Flags).
+			WithField("duration", time.Since(now)).
+			WithField("netlink", "RouteReplace").Errorf("error %+v", err)
 		return errors.WithStack(err)
 	}
 	log.FromContext(ctx).
@@ -98,6 +112,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, scope
 		WithField("Dst", kernelRoute.Dst).
 		WithField("Gw", kernelRoute.Gw).
 		WithField("Scope", kernelRoute.Scope).
+		WithField("Flags", kernelRoute.Flags).
 		WithField("duration", time.Since(now)).
 		WithField("netlink", "RouteReplace").Debug("completed")
 	return nil
