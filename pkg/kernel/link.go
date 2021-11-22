@@ -200,7 +200,6 @@ func FindHostDevice(pciAddress, name string, namespaces ...netns.NsHandle) (Link
 			}
 		}
 	}
-
 	return nil, errors.Errorf("failed to obtain netlink link matching criteria: name=%s or pciAddress=%s", name, pciAddress)
 }
 
@@ -211,8 +210,9 @@ func searchByPCIAddress(ns netns.NsHandle, name, pciAddress string) (netlink.Lin
 		return nil, errors.Errorf("failed to enter namespace: %s", err)
 	}
 
-	netDir := filepath.Join("/sys/bus/pci/devices", pciAddress, "net")
-	if _, err = os.Lstat(netDir); err != nil {
+	pciDevicePath := filepath.Join("/sys/bus/pci/devices", pciAddress)
+	netDir, err := findNetDir(pciDevicePath)
+	if err != nil {
 		return nil, errors.Errorf("no net directory under pci device %s: %q", pciAddress, err)
 	}
 
@@ -236,6 +236,33 @@ func searchByPCIAddress(ns netns.NsHandle, name, pciAddress string) (netlink.Lin
 	}
 
 	return link, nil
+}
+
+func findNetDir(basePath string) (string, error) {
+	subDir := filepath.Join(basePath, "net")
+	if _, err := os.Lstat(subDir); err == nil {
+		return subDir, nil
+	}
+	files, err := ioutil.ReadDir(basePath)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to read directory %s", basePath)
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			subDir = filepath.Join(basePath, file.Name())
+			subdirFiles, err := ioutil.ReadDir(subDir)
+			if err != nil {
+				return "", errors.Wrapf(err, "failed to read subdirectory %s", subDir)
+			}
+			for _, subdirFile := range subdirFiles {
+				if subdirFile.IsDir() && subdirFile.Name() == "net" {
+					subDir = filepath.Join(subDir, subdirFile.Name())
+					return subDir, nil
+				}
+			}
+		}
+	}
+	return "", errors.Errorf("failed to find net directory")
 }
 
 func searchByName(ns netns.NsHandle, name, pciAddress string) (netlink.Link, error) {

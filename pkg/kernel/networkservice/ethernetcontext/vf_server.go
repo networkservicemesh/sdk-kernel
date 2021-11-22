@@ -23,9 +23,11 @@ import (
 	"context"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
 )
@@ -38,13 +40,32 @@ func NewVFServer() networkservice.NetworkServiceServer {
 }
 
 func (s *vfEthernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
+	postponeCtxFunc := postpone.ContextWithValues(ctx)
 	if vfConfig, ok := vfconfig.Load(ctx, false); ok {
 		err := vfCreate(vfConfig, request.Connection, false)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return next.Server(ctx).Request(ctx, request)
+
+	conn, err := next.Server(ctx).Request(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := vfconfig.Load(ctx, false); !ok {
+		if err := setKernelHwAddress(ctx, conn, false); err != nil {
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
+
+			if _, closeErr := s.Close(closeCtx, conn); closeErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+			}
+
+			return nil, err
+		}
+	}
+	return conn, nil
 }
 
 func (s *vfEthernetContextServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
