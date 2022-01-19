@@ -1,6 +1,6 @@
-// Copyright (c) 2021 Cisco and/or its affiliates.
+// Copyright (c) 2021-2022 Cisco and/or its affiliates.
 //
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2021-2022 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -46,7 +46,7 @@ func setMTU(ctx context.Context, conn *networkservice.Connection) error {
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer netlinkHandle.Delete()
+		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
 

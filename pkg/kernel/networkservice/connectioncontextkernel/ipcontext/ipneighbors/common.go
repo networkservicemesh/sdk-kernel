@@ -45,7 +45,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer netlinkHandle.Delete()
+		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
 

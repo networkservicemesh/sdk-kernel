@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,17 +14,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build linux
+package iprule
 
-package kernel
+import "sync"
 
-import (
-	"github.com/vishvananda/netlink"
-)
+//go:generate go-syncmap -output table_map.gen.go -type Map<tableKey,int>
 
-const (
-	// FamilyAll is netlink.FAMILY_ALL
-	FamilyAll = netlink.FAMILY_ALL
-	// NudReachable is netlink.NUD_REACHABLE
-	NudReachable = netlink.NUD_REACHABLE
-)
+type tableKey struct {
+	from     string
+	protocol uint32
+	port     uint32
+}
+
+// Map - sync.Map with key == tableKey and value == uint32
+type Map sync.Map
