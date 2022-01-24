@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2021-2022 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -13,6 +13,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// +build linux
 
 package ethernetcontext
 
@@ -37,7 +39,7 @@ func setKernelHwAddress(ctx context.Context, conn *networkservice.Connection, is
 		if err != nil {
 			return errors.WithStack(err)
 		}
-		defer netlinkHandle.Delete()
+		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
 

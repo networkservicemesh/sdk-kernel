@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Doc.ai and/or its affiliates.
+// Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,17 +14,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// +build linux
-
-package kernel
-
-import (
-	"github.com/vishvananda/netlink"
-)
-
-const (
-	// FamilyAll is netlink.FAMILY_ALL
-	FamilyAll = netlink.FAMILY_ALL
-	// NudReachable is netlink.NUD_REACHABLE
-	NudReachable = netlink.NUD_REACHABLE
-)
+// Package iprule provides networkservice chain elements that support setting ip rules
+package iprule

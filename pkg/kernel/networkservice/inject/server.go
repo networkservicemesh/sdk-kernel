@@ -14,6 +14,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// +build linux
+
 // Package inject contains chain element that moves network interface to and from a Client's pod network namespace
 package inject
 
