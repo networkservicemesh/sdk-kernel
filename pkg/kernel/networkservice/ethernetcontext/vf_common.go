@@ -17,6 +17,7 @@
 package ethernetcontext
 
 import (
+	"bytes"
 	"context"
 	"net"
 	"time"
@@ -60,6 +61,9 @@ func setKernelHwAddress(ctx context.Context, conn *networkservice.Connection, is
 				macAddr, err := net.ParseMAC(macAddrString)
 				if err != nil {
 					return errors.Wrapf(err, "invalid MAC address: %v", macAddrString)
+				}
+				if bytes.Equal([]byte(macAddr), []byte(l.Attrs().HardwareAddr)) {
+					return nil
 				}
 				if err = netlinkHandle.LinkSetDown(l); err != nil {
 					return errors.WithStack(err)
