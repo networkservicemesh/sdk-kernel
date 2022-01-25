@@ -1,6 +1,6 @@
-// Copyright (c) 2020-2021 Cisco and/or its affiliates.
+// Copyright (c) 2020-2022 Cisco and/or its affiliates.
 //
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2021-2022 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -25,6 +25,7 @@ import (
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddress"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipneighbors"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/iprule"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/routes"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/mtu"
 
@@ -59,6 +60,7 @@ func NewServer() networkservice.NetworkServiceServer {
 	return chain.NewNetworkServiceServer(
 		mtu.NewServer(),
 		ipneighbors.NewServer(),
+		iprule.NewServer(),
 		routes.NewServer(),
 		ipaddress.NewServer(),
 	)
