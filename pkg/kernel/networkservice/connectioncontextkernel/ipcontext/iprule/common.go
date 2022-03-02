@@ -14,12 +14,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package iprule
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/pkg/errors"
@@ -57,7 +59,8 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 			key := tableKey{
 				from:     policy.From,
 				protocol: policy.Proto,
-				port:     policy.Port,
+				dstPort:  policy.DstPort,
+				srcPort:  policy.SrcPort,
 			}
 			tableID, ok := tableIDs.Load(key)
 			if !ok {
@@ -98,8 +101,27 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 		}
 		rule.Src = src
 	}
-	rule.IPProto = int(policy.Proto)
-	rule.Dport = netlink.NewRulePortRange(uint16(policy.Port), uint16(policy.Port))
+	if policy.Proto != "" {
+		protocol, err := strconv.Atoi(policy.Proto)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+		rule.IPProto = protocol
+	}
+	dstPortRange, err := networkservice.ParsePortRange(policy.DstPort)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if dstPortRange != nil {
+		rule.Dport = netlink.NewRulePortRange(dstPortRange.Start, dstPortRange.End)
+	}
+	srcPortRange, err := networkservice.ParsePortRange(policy.SrcPort)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	if srcPortRange != nil {
+		rule.Sport = netlink.NewRulePortRange(srcPortRange.Start, srcPortRange.End)
+	}
 	return rule, nil
 }
 
@@ -115,7 +137,8 @@ func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice
 		log.FromContext(ctx).
 			WithField("From", policy.From).
 			WithField("IPProto", policy.Proto).
-			WithField("Port", policy.Port).
+			WithField("DstPort", policy.DstPort).
+			WithField("SrcPort", policy.SrcPort).
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleAdd").Errorf("error %+v", err)
@@ -124,7 +147,8 @@ func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice
 	log.FromContext(ctx).
 		WithField("From", policy.From).
 		WithField("IPProto", policy.Proto).
-		WithField("Port", policy.Port).
+		WithField("DstPort", policy.DstPort).
+		WithField("SrcPort", policy.SrcPort).
 		WithField("Table", tableID).
 		WithField("duration", time.Since(now)).
 		WithField("netlink", "RuleAdd").Debug("completed")
@@ -234,7 +258,8 @@ func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice
 		log.FromContext(ctx).
 			WithField("From", policy.From).
 			WithField("IPProto", policy.Proto).
-			WithField("Port", policy.Port).
+			WithField("DstPort", policy.DstPort).
+			WithField("SrcPort", policy.SrcPort).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleDel").Errorf("error %+v", err)
 		return errors.WithStack(err)
@@ -242,7 +267,8 @@ func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice
 	log.FromContext(ctx).
 		WithField("From", policy.From).
 		WithField("IPProto", policy.Proto).
-		WithField("Port", policy.Port).
+		WithField("DstPort", policy.DstPort).
+		WithField("SrcPort", policy.SrcPort).
 		WithField("duration", time.Since(now)).
 		WithField("netlink", "RuleDel").Debug("completed")
 	return nil

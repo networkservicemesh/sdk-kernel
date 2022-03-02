@@ -22,8 +22,9 @@ import "sync"
 
 type tableKey struct {
 	from     string
-	protocol uint32
-	port     uint32
+	protocol string
+	dstPort  string
+	srcPort  string
 }
 
 // Map - sync.Map with key == tableKey and value == uint32
