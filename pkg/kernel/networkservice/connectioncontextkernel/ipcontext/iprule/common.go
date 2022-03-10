@@ -57,6 +57,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 		for _, policy := range conn.Context.IpContext.Policies {
 			// Check if we already created required ip table
 			key := tableKey{
+				connId:   conn.GetId(),
 				from:     policy.From,
 				protocol: policy.Proto,
 				dstPort:  policy.DstPort,

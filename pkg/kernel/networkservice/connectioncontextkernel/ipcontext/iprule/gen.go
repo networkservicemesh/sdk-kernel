@@ -21,6 +21,7 @@ import "sync"
 //go:generate go-syncmap -output table_map.gen.go -type Map<tableKey,int>
 
 type tableKey struct {
+	connId   string
 	from     string
 	protocol string
 	dstPort  string
