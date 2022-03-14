@@ -21,9 +21,11 @@ import "sync"
 //go:generate go-syncmap -output table_map.gen.go -type Map<tableKey,int>
 
 type tableKey struct {
+	connId   string
 	from     string
-	protocol uint32
-	port     uint32
+	protocol string
+	dstPort  string
+	srcPort  string
 }
 
 // Map - sync.Map with key == tableKey and value == uint32
