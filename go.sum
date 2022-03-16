@@ -160,8 +160,8 @@ github.com/nats-io/nuid v1.0.1/go.mod h1:19wcPz3Ph3q0Jbyiqsd0kePYG7A95tJPxeL+1OS
 github.com/nats-io/stan.go v0.10.2/go.mod h1:vo2ax8K2IxaR3JtEMLZRFKIdoK/3o1/PKueapB7ezX0=
 github.com/networkservicemesh/api v1.2.1-0.20220315001249-f33f8c3f2feb h1:5047nbh591kIjLNlFrO0NbpRVkOtCGRSvkKKjQyEDyI=
 github.com/networkservicemesh/api v1.2.1-0.20220315001249-f33f8c3f2feb/go.mod h1:B6meq/SWjWR6bGXZdXPfbOeaBK+T1JayLdtEJQCsXKU=
-github.com/networkservicemesh/sdk v0.5.1-0.20220315002012-985d4a0f3ada h1:UNoP4uP3MqTqYd8x2/Yn9dJPRCwYoDZyw7Ttldpjzro=
-github.com/networkservicemesh/sdk v0.5.1-0.20220315002012-985d4a0f3ada/go.mod h1:fK/G5mfEDIefFXxRSNXqj1jjd8SEUeZMpQUdCuc7owY=
+github.com/networkservicemesh/sdk v0.5.1-0.20220316101237-288caa7bbc1c h1:R0DVEMRYMg5SAuPQ48R3lTUD5Dpu+epJfrsmbDMY8mw=
+github.com/networkservicemesh/sdk v0.5.1-0.20220316101237-288caa7bbc1c/go.mod h1:fK/G5mfEDIefFXxRSNXqj1jjd8SEUeZMpQUdCuc7owY=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
 github.com/nxadm/tail v1.4.8/go.mod h1:+ncqLTQzXmGhMZNUePPaPqPvBxHAIsmXswZKocGu+AU=
 github.com/olekukonko/tablewriter v0.0.1/go.mod h1:vsDQFd/mU46D+Z4whnwzcISnGGzXWMclvtLoiIKAKIo=
