@@ -16,6 +16,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package ipaddress
@@ -106,7 +107,29 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 			}()
 		}()
 
-		for _, ipNet := range ipNets {
+		// Get IP addresses to add and to remove
+		toAdd, toRemove, err := getIPAddrDifferences(netlinkHandle, l, ipNets)
+		if err != nil {
+			return err
+		}
+
+		// Remove no longer existing IPs
+		for _, ipNet := range toRemove {
+			now := time.Now()
+			addr := &netlink.Addr{
+				IPNet: ipNet,
+			}
+			if err := netlinkHandle.AddrDel(l, addr); err != nil {
+				return errors.Wrapf(err, "attempting to delete ip address %s to %s", addr.IPNet, l.Attrs().Name)
+			}
+			log.FromContext(ctx).
+				WithField("link.Name", l.Attrs().Name).
+				WithField("Addr", ipNet.String()).
+				WithField("duration", time.Since(now)).
+				WithField("netlink", "AddrDel").Debug("completed")
+		}
+		// Add new IP addresses
+		for _, ipNet := range toAdd {
 			now := time.Now()
 			addr := &netlink.Addr{
 				IPNet: ipNet,
@@ -129,14 +152,44 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 				WithField("duration", time.Since(now)).
 				WithField("netlink", "AddrAdd").Debug("completed")
 		}
-		return waitForIPNets(ctx, ch, l, ipNets)
+		return waitForIPNets(ctx, ch, l, toAdd)
 	}
 	return nil
+}
+
+func getIPAddrDifferences(netlinkHandle *netlink.Handle, l netlink.Link, new []*net.IPNet) ([]*net.IPNet, []*net.IPNet, error) {
+	toAdd := []*net.IPNet{}
+	toRemove := []*net.IPNet{}
+	currentIPs, err := netlinkHandle.AddrList(l, netlink.FAMILY_ALL)
+	if err != nil {
+		return nil, nil, errors.Wrapf(err, "failed to list ip addresses")
+	}
+	currentIPsMap := make(map[string]*net.IPNet)
+	for _, addr := range currentIPs {
+		// ignore link-local addresses (fe80::/10...)
+		if addr.Scope != unix.RT_SCOPE_UNIVERSE {
+			continue
+		}
+		currentIPsMap[addr.IPNet.String()] = addr.IPNet
+	}
+	for _, ipNet := range new {
+		if _, ok := currentIPsMap[ipNet.String()]; !ok {
+			toAdd = append(toAdd, ipNet)
+		}
+		delete(currentIPsMap, ipNet.String())
+	}
+	for _, ipNet := range currentIPsMap {
+		toRemove = append(toRemove, ipNet)
+	}
+	return toAdd, toRemove, nil
 }
 
 func waitForIPNets(ctx context.Context, ch chan netlink.AddrUpdate, l netlink.Link, ipNets []*net.IPNet) error {
 	now := time.Now()
 	for {
+		if len(ipNets) == 0 {
+			return nil
+		}
 		j := -1
 		select {
 		case <-ctx.Done():
@@ -161,9 +214,6 @@ func waitForIPNets(ctx context.Context, ch chan netlink.AddrUpdate, l netlink.Li
 		}
 		if j != -1 {
 			ipNets = append(ipNets[:j], ipNets[j+1:]...)
-		}
-		if len(ipNets) == 0 {
-			return nil
 		}
 	}
 }
