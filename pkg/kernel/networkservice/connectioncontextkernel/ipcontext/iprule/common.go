@@ -21,6 +21,7 @@ package iprule
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -54,21 +55,30 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 			return errors.WithStack(err)
 		}
 
-		for _, policy := range conn.Context.IpContext.Policies {
-			// Check if we already created required ip table
-			key := tableKey{
-				connId:   conn.GetId(),
-				from:     policy.From,
-				protocol: policy.Proto,
-				dstPort:  policy.DstPort,
-				srcPort:  policy.SrcPort,
+		ps, ok := tableIDs.Load(mechanism.GetNetNSURL())
+		if !ok {
+			if len(conn.Context.IpContext.Policies) == 0 {
+				return nil
 			}
-			tableID, ok := tableIDs.Load(key)
-			if !ok {
-				counter.Inc()
-				tableID = int(counter.Load())
+			ps = policies{
+				policies: make(map[int]*networkservice.PolicyRoute),
 			}
+			tableIDs.Store(mechanism.GetNetNSURL(), ps)
+		}
+		// Get policies to add and to remove
+		toAdd, toRemove := getPolicyDifferences(ps.policies, conn.Context.IpContext.Policies)
 
+		// Remove no longer existing policies
+		for tableID, policy := range toRemove {
+			if err := delRule(ctx, netlinkHandle, policy); err != nil {
+				return err
+			}
+			delete(ps.policies, tableID)
+			tableIDs.Store(mechanism.GetNetNSURL(), ps)
+		}
+		// Add new policies
+		for _, policy := range toAdd {
+			tableID := int(ps.counter.Inc())
 			// If policy doesn't contain any route - add default
 			if len(policy.Routes) == 0 {
 				policy.Routes = append(policy.Routes, defaultRoute())
@@ -78,19 +88,44 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 					return err
 				}
 			}
-
-			if !ok {
-				// Check and delete old rules if they don't fit
-				_ = delOldRules(ctx, netlinkHandle, policy, tableID)
-				// Add new rule
-				if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
-					return err
-				}
-				tableIDs.Store(key, tableID)
+			if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
+				return err
 			}
+			ps.policies[tableID] = policy
+			tableIDs.Store(mechanism.GetNetNSURL(), ps)
 		}
 	}
 	return nil
+}
+
+func getPolicyDifferences(current map[int]*networkservice.PolicyRoute, new []*networkservice.PolicyRoute) ([]*networkservice.PolicyRoute, map[int]*networkservice.PolicyRoute) {
+	type table struct {
+		tableID     int
+		policyRoute *networkservice.PolicyRoute
+	}
+	var toAdd []*networkservice.PolicyRoute
+	toRemove := map[int]*networkservice.PolicyRoute{}
+	currentMap := make(map[string]*table)
+	for tableId, policy := range current {
+		currentMap[policyKey(policy)] = &table{
+			tableID:     tableId,
+			policyRoute: policy,
+		}
+	}
+	for _, policy := range new {
+		if _, ok := currentMap[policyKey(policy)]; !ok {
+			toAdd = append(toAdd, policy)
+		}
+		delete(currentMap, policyKey(policy))
+	}
+	for _, table := range currentMap {
+		toRemove[table.tableID] = table.policyRoute
+	}
+	return toAdd, toRemove
+}
+
+func policyKey(policy *networkservice.PolicyRoute) string {
+	return fmt.Sprintf("%s;%s;%s;%s", policy.DstPort, policy.SrcPort, policy.From, policy.Proto)
 }
 
 func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
@@ -253,6 +288,8 @@ func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	// TODO: Flush table
 
 	now := time.Now()
 	if err := handle.RuleDel(rule); err != nil {

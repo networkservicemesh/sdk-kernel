@@ -158,8 +158,8 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 }
 
 func getIPAddrDifferences(netlinkHandle *netlink.Handle, l netlink.Link, new []*net.IPNet) ([]*net.IPNet, []*net.IPNet, error) {
-	toAdd := []*net.IPNet{}
-	toRemove := []*net.IPNet{}
+	var toAdd []*net.IPNet
+	var toRemove []*net.IPNet
 	currentIPs, err := netlinkHandle.AddrList(l, netlink.FAMILY_ALL)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to list ip addresses")

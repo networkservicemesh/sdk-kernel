@@ -16,17 +16,26 @@
 
 package iprule
 
-import "sync"
+import (
+	"sync"
 
-//go:generate go-syncmap -output table_map.gen.go -type Map<tableKey,int>
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"go.uber.org/atomic"
+)
 
-type tableKey struct {
-	connId   string
-	from     string
-	protocol string
-	dstPort  string
-	srcPort  string
+//go:generate go-syncmap -output table_map.gen.go -type Map<string,policies>
+type policies struct {
+	counter  atomic.Int32
+	policies map[int]*networkservice.PolicyRoute
 }
 
-// Map - sync.Map with key == tableKey and value == uint32
+func (p *policies) toSlice() []*networkservice.PolicyRoute {
+	policies := []*networkservice.PolicyRoute{}
+	for _, policy := range p.policies {
+		policies = append(policies, policy)
+	}
+	return policies
+}
+
+// Map - sync.Map with key == string (netNsURL) and value == policies
 type Map sync.Map
