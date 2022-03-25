@@ -25,6 +25,8 @@ import (
 	"strconv"
 	"time"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
@@ -54,34 +56,36 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 			return errors.WithStack(err)
 		}
 
-		ps, ok := tableIDs.Load(mechanism.GetNetNSURL())
+		ps, ok := tableIDs.Load(conn.GetId())
 		if !ok {
 			if len(conn.Context.IpContext.Policies) == 0 {
 				return nil
 			}
-			ps = policies{
-				policies: make(map[int]*networkservice.PolicyRoute),
-			}
-			tableIDs.Store(mechanism.GetNetNSURL(), ps)
+			ps = make(map[int]*networkservice.PolicyRoute)
+			tableIDs.Store(conn.GetId(), ps)
 		}
 		// Get policies to add and to remove
-		toAdd, toRemove := getPolicyDifferences(ps.policies, conn.Context.IpContext.Policies)
+		toAdd, toRemove := getPolicyDifferences(ps, conn.Context.IpContext.Policies)
 
 		// Remove no longer existing policies
 		for tableID, policy := range toRemove {
 			if err := delRule(ctx, netlinkHandle, policy, tableID); err != nil {
 				return err
 			}
-			delete(ps.policies, tableID)
-			tableIDs.Store(mechanism.GetNetNSURL(), ps)
+			delete(ps, tableID)
+			tableIDs.Store(conn.GetId(), ps)
 		}
 		// Add new policies
 		for _, policy := range toAdd {
-			tableID := int(ps.counter.Inc())
+			tableID, err := getFreeTableID(ctx, netlinkHandle)
+			if err != nil {
+				return errors.Wrapf(err, "failed to get free tableId")
+			}
 			// If policy doesn't contain any route - add default
 			if len(policy.Routes) == 0 {
 				policy.Routes = append(policy.Routes, defaultRoute())
 			}
+
 			for _, route := range policy.Routes {
 				if err := routeAdd(ctx, netlinkHandle, l, route, tableID); err != nil {
 					return errors.Wrapf(err, "failed to add route")
@@ -90,8 +94,8 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 			if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
 				return errors.Wrapf(err, "failed to add rule")
 			}
-			ps.policies[tableID] = policy
-			tableIDs.Store(mechanism.GetNetNSURL(), ps)
+			ps[tableID] = policy
+			tableIDs.Store(conn.GetId(), ps)
 		}
 	}
 	return nil
@@ -247,17 +251,17 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) er
 			return errors.WithStack(err)
 		}
 		defer netlinkHandle.Close()
-		ps, ok := tableIDs.Load(mechanism.GetNetNSURL())
+		ps, ok := tableIDs.Load(conn.GetId())
 		if ok {
-			for tableID, policy := range ps.policies {
+			for tableID, policy := range ps {
 				if err := delRule(ctx, netlinkHandle, policy, tableID); err != nil {
 					return errors.WithStack(err)
 				}
-				delete(ps.policies, tableID)
-				tableIDs.Store(mechanism.GetNetNSURL(), ps)
+				delete(ps, tableID)
+				tableIDs.Store(conn.GetId(), ps)
 			}
-			if len(ps.policies) == 0 {
-				tableIDs.Delete(mechanism.GetNetNSURL())
+			if len(ps) == 0 {
+				tableIDs.Delete(conn.GetId())
 			}
 		}
 	}
@@ -314,4 +318,37 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID int) error 
 		WithField("tableID", tableID).
 		WithField("netlink", "flushTable").Debug("completed")
 	return nil
+}
+
+func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
+	routes, err := handle.RouteListFiltered(netlink.FAMILY_ALL,
+		&netlink.Route{
+			Table: unix.RT_TABLE_UNSPEC,
+		},
+		netlink.RT_FILTER_TABLE)
+	if err != nil {
+		return 0, errors.Wrapf(errors.WithStack(err), "getFreeTableID: failed to list routes")
+	}
+
+	// tableID = 0 is reserved
+	ids := make(map[int]int)
+	ids[0] = 0
+	for _, route := range routes {
+		ids[route.Table] = route.Table
+	}
+
+	// Find first missing table id
+	tableID := len(ids)
+	for i := 0; i < len(ids); i++ {
+		if _, ok := ids[i]; !ok {
+			tableID = i
+			break
+		}
+	}
+
+	log.FromContext(ctx).
+		WithField("tableID", tableID).
+		WithField("netlink", "getFreeTableID").Debug("completed")
+
+	return tableID, nil
 }

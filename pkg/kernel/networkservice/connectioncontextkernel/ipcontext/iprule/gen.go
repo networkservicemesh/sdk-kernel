@@ -20,22 +20,11 @@ import (
 	"sync"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"go.uber.org/atomic"
 )
 
 //go:generate go-syncmap -output table_map.gen.go -type Map<string,policies>
-type policies struct {
-	counter  atomic.Int32
-	policies map[int]*networkservice.PolicyRoute
-}
 
-func (p *policies) toSlice() []*networkservice.PolicyRoute {
-	policies := []*networkservice.PolicyRoute{}
-	for _, policy := range p.policies {
-		policies = append(policies, policy)
-	}
-	return policies
-}
+type policies map[int]*networkservice.PolicyRoute
 
 // Map - sync.Map with key == string (netNsURL) and value == policies
 type Map sync.Map
