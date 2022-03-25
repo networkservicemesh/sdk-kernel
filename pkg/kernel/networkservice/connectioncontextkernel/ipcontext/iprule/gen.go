@@ -16,17 +16,15 @@
 
 package iprule
 
-import "sync"
+import (
+	"sync"
 
-//go:generate go-syncmap -output table_map.gen.go -type Map<tableKey,int>
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+)
 
-type tableKey struct {
-	connId   string
-	from     string
-	protocol string
-	dstPort  string
-	srcPort  string
-}
+//go:generate go-syncmap -output table_map.gen.go -type Map<string,policies>
 
-// Map - sync.Map with key == tableKey and value == uint32
+type policies map[int]*networkservice.PolicyRoute
+
+// Map - sync.Map with key == string (connID) and value == policies
 type Map sync.Map

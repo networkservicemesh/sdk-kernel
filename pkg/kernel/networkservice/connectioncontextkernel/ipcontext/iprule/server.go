@@ -14,6 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 package iprule
@@ -26,12 +27,10 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 	"github.com/pkg/errors"
-	"go.uber.org/atomic"
 )
 
 type ipruleServer struct {
-	counter atomic.Int32
-	tables  Map
+	tables Map
 }
 
 // NewServer creates a new server chain element setting ip rules
@@ -47,7 +46,7 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 
-	if err := create(ctx, conn, &i.tables, &i.counter); err != nil {
+	if err := create(ctx, conn, &i.tables); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 
@@ -62,6 +61,6 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (i *ipruleServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	_ = del(ctx, conn)
+	_ = del(ctx, conn, &i.tables)
 	return next.Server(ctx).Close(ctx, conn)
 }
