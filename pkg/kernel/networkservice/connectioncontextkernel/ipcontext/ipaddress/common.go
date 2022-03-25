@@ -94,7 +94,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		ch := make(chan netlink.AddrUpdate)
 		done := make(chan struct{})
 
-		if err := netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
+		if err = netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
 			return errors.Wrapf(err, "failed to subscribe for interface address updates")
 		}
 
@@ -157,9 +157,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 	return nil
 }
 
-func getIPAddrDifferences(netlinkHandle *netlink.Handle, l netlink.Link, new []*net.IPNet) ([]*net.IPNet, []*net.IPNet, error) {
-	var toAdd []*net.IPNet
-	var toRemove []*net.IPNet
+func getIPAddrDifferences(netlinkHandle *netlink.Handle, l netlink.Link, newIPs []*net.IPNet) (toAdd, toRemove []*net.IPNet, err error) {
 	currentIPs, err := netlinkHandle.AddrList(l, netlink.FAMILY_ALL)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "failed to list ip addresses")
@@ -172,7 +170,7 @@ func getIPAddrDifferences(netlinkHandle *netlink.Handle, l netlink.Link, new []*
 		}
 		currentIPsMap[addr.IPNet.String()] = addr.IPNet
 	}
-	for _, ipNet := range new {
+	for _, ipNet := range newIPs {
 		if _, ok := currentIPsMap[ipNet.String()]; !ok {
 			toAdd = append(toAdd, ipNet)
 		}

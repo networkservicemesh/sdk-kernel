@@ -26,5 +26,5 @@ import (
 
 type policies map[int]*networkservice.PolicyRoute
 
-// Map - sync.Map with key == string (netNsURL) and value == policies
+// Map - sync.Map with key == string (connID) and value == policies
 type Map sync.Map

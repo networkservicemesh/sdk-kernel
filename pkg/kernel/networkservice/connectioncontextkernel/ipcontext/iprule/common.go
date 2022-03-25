@@ -52,10 +52,6 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 			return errors.WithStack(err)
 		}
 
-		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.WithStack(err)
-		}
-
 		ps, ok := tableIDs.Load(conn.GetId())
 		if !ok {
 			if len(conn.Context.IpContext.Policies) == 0 {
@@ -101,13 +97,12 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 	return nil
 }
 
-func getPolicyDifferences(current map[int]*networkservice.PolicyRoute, new []*networkservice.PolicyRoute) ([]*networkservice.PolicyRoute, map[int]*networkservice.PolicyRoute) {
+func getPolicyDifferences(current map[int]*networkservice.PolicyRoute, newPolicies []*networkservice.PolicyRoute) (toAdd []*networkservice.PolicyRoute, toRemove map[int]*networkservice.PolicyRoute) {
 	type table struct {
 		tableID     int
 		policyRoute *networkservice.PolicyRoute
 	}
-	var toAdd []*networkservice.PolicyRoute
-	toRemove := map[int]*networkservice.PolicyRoute{}
+	toRemove = make(map[int]*networkservice.PolicyRoute)
 	currentMap := make(map[string]*table)
 	for tableID, policy := range current {
 		currentMap[policyKey(policy)] = &table{
@@ -115,7 +110,7 @@ func getPolicyDifferences(current map[int]*networkservice.PolicyRoute, new []*ne
 			policyRoute: policy,
 		}
 	}
-	for _, policy := range new {
+	for _, policy := range newPolicies {
 		if _, ok := currentMap[policyKey(policy)]; !ok {
 			toAdd = append(toAdd, policy)
 		}
@@ -308,8 +303,8 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID int) error 
 	if err != nil {
 		return errors.Wrapf(errors.WithStack(err), "failed to list routes")
 	}
-	for _, route := range routes {
-		err := handle.RouteDel(&route)
+	for i := 0; i < len(routes); i++ {
+		err := handle.RouteDel(&routes[i])
 		if err != nil {
 			return errors.Wrapf(errors.WithStack(err), "failed to delete route")
 		}
@@ -333,8 +328,8 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 	// tableID = 0 is reserved
 	ids := make(map[int]int)
 	ids[0] = 0
-	for _, route := range routes {
-		ids[route.Table] = route.Table
+	for i := 0; i < len(routes); i++ {
+		ids[routes[i].Table] = routes[i].Table
 	}
 
 	// Find first missing table id
