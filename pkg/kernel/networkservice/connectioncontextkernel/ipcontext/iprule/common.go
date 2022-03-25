@@ -246,17 +246,12 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) er
 			return errors.WithStack(err)
 		}
 		defer netlinkHandle.Close()
-		ps, ok := tableIDs.Load(conn.GetId())
+		ps, ok := tableIDs.LoadAndDelete(conn.GetId())
 		if ok {
 			for tableID, policy := range ps {
 				if err := delRule(ctx, netlinkHandle, policy, tableID); err != nil {
 					return errors.WithStack(err)
 				}
-				delete(ps, tableID)
-				tableIDs.Store(conn.GetId(), ps)
-			}
-			if len(ps) == 0 {
-				tableIDs.Delete(conn.GetId())
 			}
 		}
 	}
