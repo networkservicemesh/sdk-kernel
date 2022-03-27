@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 Intel Corporation. All Rights Reserved.
+// Copyright (c) 2020-2022 Intel Corporation. All Rights Reserved.
 //
 // Copyright (c) 2021 Nordix Foundation.
 //

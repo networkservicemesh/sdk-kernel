@@ -61,6 +61,7 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (i *ipruleServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
+
 	_ = del(ctx, conn, &i.tables)
 	return next.Server(ctx).Close(ctx, conn)
 }
