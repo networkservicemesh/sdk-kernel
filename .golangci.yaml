@@ -130,7 +130,7 @@ linters:
   disable-all: true
   enable:
     # - rowserrcheck
-    # - goheader
+    - goheader
     - bodyclose
     - deadcode
     - depguard
