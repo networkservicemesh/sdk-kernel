@@ -113,14 +113,13 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		}
 
 		// Remove no longer existing IPs
-		err = removeOldIPAddrs(ctx, netlinkHandle, l, toRemove)
-		if err != nil {
+
+		if err := removeOldIPAddrs(ctx, netlinkHandle, l, toRemove); err != nil {
 			return err
 		}
 
 		// Add new IP addresses
-		err = addNewIPAddrs(ctx, netlinkHandle, l, toAdd)
-		if err != nil {
+		if err := addNewIPAddrs(ctx, netlinkHandle, l, toAdd); err != nil {
 			return err
 		}
 		return waitForIPNets(ctx, ch, l, toAdd)
