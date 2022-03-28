@@ -17,6 +17,7 @@
 // limitations under the License.
 
 //go:build linux
+// +build linux
 
 // Package inject contains chain element that moves network interface to and from a Client's pod network namespace
 package inject

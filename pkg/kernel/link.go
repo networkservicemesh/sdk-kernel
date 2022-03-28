@@ -19,6 +19,7 @@
 // limitations under the License.
 
 //go:build linux
+// +build linux
 
 // Package kernel contains Link representation of network interface
 package kernel
