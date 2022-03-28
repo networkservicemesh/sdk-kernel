@@ -15,7 +15,6 @@
 // limitations under the License.
 
 //go:build linux
-// +build linux
 
 // Package peer allows storing peer netlink.Link in per Connection.Id metadata
 package peer

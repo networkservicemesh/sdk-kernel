@@ -19,7 +19,6 @@
 // limitations under the License.
 
 //go:build linux
-// +build linux
 
 // Package ethernetcontext provides chain element for setup link ethernet properties
 package ethernetcontext
