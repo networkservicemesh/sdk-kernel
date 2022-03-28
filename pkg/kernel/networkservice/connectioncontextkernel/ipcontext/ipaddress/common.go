@@ -114,46 +114,65 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		}
 
 		// Remove no longer existing IPs
-		for _, ipNet := range toRemove {
-			now := time.Now()
-			addr := &netlink.Addr{
-				IPNet: ipNet,
-			}
-			if err := netlinkHandle.AddrDel(l, addr); err != nil {
-				return errors.Wrapf(err, "attempting to delete ip address %s to %s", addr.IPNet, l.Attrs().Name)
-			}
-			log.FromContext(ctx).
-				WithField("link.Name", l.Attrs().Name).
-				WithField("Addr", ipNet.String()).
-				WithField("duration", time.Since(now)).
-				WithField("netlink", "AddrDel").Debug("completed")
+		err = removeOldIPAddrs(ctx, netlinkHandle, l, toRemove)
+		if err != nil {
+			return err
 		}
+
 		// Add new IP addresses
-		for _, ipNet := range toAdd {
-			now := time.Now()
-			addr := &netlink.Addr{
-				IPNet: ipNet,
-				Flags: unix.IFA_F_PERMANENT,
-			}
-			// Turns out IPv6 uses Duplicate Address Detection (DAD) which
-			// we don't need here and which can cause it to take more than a second
-			// before anything *works* (even though the interface is up).  This causes
-			// cryptic error messages.  To avoid, we use the flag to disable DAD for
-			// any IPv6 addresses. Further, it seems that this is only needed for veth type, not if we have a tapv2
-			if ipNet != nil && ipNet.IP.To4() == nil {
-				addr.Flags |= unix.IFA_F_NODAD
-			}
-			if err := netlinkHandle.AddrReplace(l, addr); err != nil {
-				return errors.Wrapf(err, "attempting to add ip address %s to %s (type: %s) with flags 0x%x", addr.IPNet, l.Attrs().Name, l.Type(), addr.Flags)
-			}
-			log.FromContext(ctx).
-				WithField("link.Name", l.Attrs().Name).
-				WithField("Addr", ipNet.String()).
-				WithField("duration", time.Since(now)).
-				WithField("netlink", "AddrAdd").Debug("completed")
+		err = addNewIPAddrs(ctx, netlinkHandle, l, toAdd)
+		if err != nil {
+			return err
 		}
 		return waitForIPNets(ctx, ch, l, toAdd)
 	}
+	return nil
+}
+
+func removeOldIPAddrs(ctx context.Context, netlinkHandle *netlink.Handle, l netlink.Link, ipAddrs []*net.IPNet) error {
+	for _, ipNet := range ipAddrs {
+		now := time.Now()
+		addr := &netlink.Addr{
+			IPNet: ipNet,
+		}
+		if err := netlinkHandle.AddrDel(l, addr); err != nil {
+			return errors.Wrapf(err, "attempting to delete ip address %s to %s", addr.IPNet, l.Attrs().Name)
+		}
+		log.FromContext(ctx).
+			WithField("link.Name", l.Attrs().Name).
+			WithField("Addr", ipNet.String()).
+			WithField("duration", time.Since(now)).
+			WithField("netlink", "AddrDel").Debug("completed")
+	}
+
+	return nil
+}
+
+func addNewIPAddrs(ctx context.Context, netlinkHandle *netlink.Handle, l netlink.Link, ipAddrs []*net.IPNet) error {
+	for _, ipNet := range ipAddrs {
+		now := time.Now()
+		addr := &netlink.Addr{
+			IPNet: ipNet,
+			Flags: unix.IFA_F_PERMANENT,
+		}
+		// Turns out IPv6 uses Duplicate Address Detection (DAD) which
+		// we don't need here and which can cause it to take more than a second
+		// before anything *works* (even though the interface is up).  This causes
+		// cryptic error messages.  To avoid, we use the flag to disable DAD for
+		// any IPv6 addresses. Further, it seems that this is only needed for veth type, not if we have a tapv2
+		if ipNet != nil && ipNet.IP.To4() == nil {
+			addr.Flags |= unix.IFA_F_NODAD
+		}
+		if err := netlinkHandle.AddrReplace(l, addr); err != nil {
+			return errors.Wrapf(err, "attempting to add ip address %s to %s (type: %s) with flags 0x%x", addr.IPNet, l.Attrs().Name, l.Type(), addr.Flags)
+		}
+		log.FromContext(ctx).
+			WithField("link.Name", l.Attrs().Name).
+			WithField("Addr", ipNet.String()).
+			WithField("duration", time.Since(now)).
+			WithField("netlink", "AddrAdd").Debug("completed")
+	}
+
 	return nil
 }
 
