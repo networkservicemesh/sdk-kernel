@@ -1,6 +1,8 @@
-// Copyright (c) 2020-2021 Intel Corporation. All Rights Reserved.
+// Copyright (c) 2022 Cisco and/or its affiliates.
 //
-// Copyright (c) 2021 Nordix Foundation.
+// Copyright (c) 2020-2022 Intel Corporation. All Rights Reserved.
+//
+// Copyright (c) 2021-2022 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -16,6 +18,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build linux
 // +build linux
 
 // Package kernel contains Link representation of network interface
