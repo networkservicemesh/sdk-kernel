@@ -20,7 +20,11 @@ package heal
 import (
 	"context"
 	"net"
+<<<<<<< HEAD
 	"sync/atomic"
+=======
+	"sync"
+>>>>>>> d826125 (Add IcmpLivenessChecker)
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
