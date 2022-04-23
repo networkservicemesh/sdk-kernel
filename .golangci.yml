@@ -10,8 +10,9 @@ linters-settings:
     values:
       regexp:
         company: .*
-        copyright-holder: Copyright \(c\) ({{year-range}}) {{company}}\n\n
-        copyright-holders: ({{copyright-holder}})+
+        copyright-holder-curr: Copyright \(c\) ({{year-range}}) {{company}}\n\n
+        copyright-holder: Copyright \(c\) .*\n\n
+        copyright-holders: ({{copyright-holder}})*({{copyright-holder-curr}})+({{copyright-holder}})*
   errcheck:
     check-type-assertions: false
     check-blank: false
@@ -24,7 +25,7 @@ linters-settings:
           - (github.com/sirupsen/logrus.FieldLogger).Warnf
           - (github.com/sirupsen/logrus.FieldLogger).Errorf
           - (github.com/sirupsen/logrus.FieldLogger).Fatalf
-  golint:
+  revive:
     min-confidence: 0.8
   goimports:
     local-prefixes: github.com/networkservicemesh/sdk-kernel/
@@ -144,7 +145,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
@@ -153,7 +154,7 @@ linters:
     # - lll
     - misspell
     - nakedret
-    - scopelint
+    - exportloopref
     - staticcheck
     - structcheck
     - stylecheck
@@ -167,3 +168,8 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - path: pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddress/common.go
+      linters:
+        - gocyclo
+      text: "func `create` is high"

@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Doc.ai and/or its affiliates.
+// Copyright (c) 2022 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -14,17 +14,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package iprule
+//go:build tools
+
+package tools
 
 import (
-	"sync"
-
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	_ "github.com/searKing/golang/tools/cmd/go-syncmap"
 )
-
-//go:generate go run github.com/searKing/golang/tools/cmd/go-syncmap -output table_map.gen.go -type Map<string,policies>
-
-type policies map[int]*networkservice.PolicyRoute
-
-// Map - sync.Map with key == string (connID) and value == policies
-type Map sync.Map
