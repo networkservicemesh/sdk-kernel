@@ -18,14 +18,12 @@
 package heal
 
 import (
-	"context"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/tatsushid/go-fastping"
 )
 
@@ -39,8 +37,7 @@ var _ heal.LivenessChecker = ICMPLivenessChecker
 // ICMPLivenessChecker is an implementation of LivenessChecker. It sends ICMP
 // pings continuously and waits for replies until the first missing reply or
 // timeout.
-func ICMPLivenessChecker(ctx context.Context, conn *networkservice.Connection) {
-	logger := log.FromContext(ctx).WithField("heal", "ICMPLivenessChecker")
+func ICMPLivenessChecker(conn *networkservice.Connection) bool {
 
 	p := fastping.NewPinger()
 	p.MaxRTT = livenessPingInterval
@@ -49,8 +46,7 @@ func ICMPLivenessChecker(ctx context.Context, conn *networkservice.Connection) {
 	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
 		addr, _, err := net.ParseCIDR(cidr)
 		if err != nil {
-			logger.Errorf("%v: %v", addr, err)
-			return
+			return false
 		}
 		ipAddr := &net.IPAddr{IP: addr}
 		addrs[ipAddr.String()] = 0
@@ -77,7 +73,6 @@ func ICMPLivenessChecker(ctx context.Context, conn *networkservice.Connection) {
 		defer mu.Unlock()
 		for ipAddr, count := range addrs {
 			if count == 0 {
-				logger.Error("Ping timeout for %v", ipAddr)
 				select {
 				case pingTimeout <- struct{}{}:
 				default:
@@ -90,12 +85,7 @@ func ICMPLivenessChecker(ctx context.Context, conn *networkservice.Connection) {
 
 	p.RunLoop()
 	defer p.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-pingTimeout:
-			return
-		}
-	}
+
+	<-pingTimeout
+	return false
 }

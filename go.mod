@@ -17,4 +17,4 @@ require (
 	google.golang.org/grpc v1.42.0
 )
 
-replace github.com/networkservicemesh/sdk => github.com/xzfc/networkservicemesh-sdk v0.0.0-20220414232223-3a19549f4efa
+replace github.com/networkservicemesh/sdk => ../sdk
