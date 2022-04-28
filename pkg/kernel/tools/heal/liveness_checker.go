@@ -18,6 +18,7 @@
 package heal
 
 import (
+	"context"
 	"net"
 	"sync"
 	"time"
@@ -27,20 +28,15 @@ import (
 	"github.com/tatsushid/go-fastping"
 )
 
-const (
-	livenessPingInterval = 200 * time.Millisecond
-	livenessPingTimeout  = 100 * time.Millisecond
-)
-
 var _ heal.LivenessChecker = ICMPLivenessChecker
 
 // ICMPLivenessChecker is an implementation of LivenessChecker. It sends ICMP
 // pings continuously and waits for replies until the first missing reply or
 // timeout.
-func ICMPLivenessChecker(conn *networkservice.Connection) bool {
-
+func ICMPLivenessChecker(deadlineCtx context.Context, conn *networkservice.Connection) bool {
+	deadline, _ := deadlineCtx.Deadline()
 	p := fastping.NewPinger()
-	p.MaxRTT = livenessPingInterval
+	p.MaxRTT = time.Until(deadline)
 
 	addrs := make(map[string]int)
 	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
@@ -54,38 +50,30 @@ func ICMPLivenessChecker(conn *networkservice.Connection) bool {
 	}
 
 	var mu sync.Mutex
-	pingTimeout := make(chan struct{}, 1)
 
 	p.OnRecv = func(ipAddr *net.IPAddr, d time.Duration) {
-		// Go-fastping reports the duration to be 0 if the received reply
-		// corresponds to the previous loop iteration, meaning that the actual
-		// duration is more than MaxRTT.  This is not documented in go-fastping.
-		if d == 0 || d > livenessPingTimeout {
-			return
-		}
 		mu.Lock()
 		defer mu.Unlock()
 		addrs[ipAddr.String()]++
 	}
 
+	alive := true
 	p.OnIdle = func() {
 		mu.Lock()
 		defer mu.Unlock()
-		for ipAddr, count := range addrs {
+		for _, count := range addrs {
 			if count == 0 {
-				select {
-				case pingTimeout <- struct{}{}:
-				default:
-				}
+				alive = false
 				return
 			}
-			addrs[ipAddr] = 0
 		}
 	}
 
-	p.RunLoop()
-	defer p.Stop()
+	err := p.Run()
 
-	<-pingTimeout
-	return false
+	if err != nil {
+		return false
+	}
+
+	return alive
 }
