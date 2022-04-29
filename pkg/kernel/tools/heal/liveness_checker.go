@@ -20,7 +20,7 @@ package heal
 import (
 	"context"
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -38,34 +38,27 @@ func ICMPLivenessChecker(deadlineCtx context.Context, conn *networkservice.Conne
 	p := fastping.NewPinger()
 	p.MaxRTT = time.Until(deadline)
 
-	addrs := make(map[string]int)
+	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
 	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
 		addr, _, err := net.ParseCIDR(cidr)
 		if err != nil {
 			return false
 		}
 		ipAddr := &net.IPAddr{IP: addr}
-		addrs[ipAddr.String()] = 0
 		p.AddIPAddr(ipAddr)
 	}
 
-	var mu sync.Mutex
+	var count int32 = 0
 
 	p.OnRecv = func(ipAddr *net.IPAddr, d time.Duration) {
-		mu.Lock()
-		defer mu.Unlock()
-		addrs[ipAddr.String()]++
+		atomic.AddInt32(&count, 1)
 	}
 
 	alive := true
 	p.OnIdle = func() {
-		mu.Lock()
-		defer mu.Unlock()
-		for _, count := range addrs {
-			if count == 0 {
-				alive = false
-				return
-			}
+		if int(count) != addrCount {
+			alive = false
+			return
 		}
 	}
 
