@@ -33,9 +33,9 @@ const (
 	defaultTimeout = 200 * time.Millisecond
 )
 
-// NewKernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
+// KernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
 // ping and checks reply. Returns false if didn't get reply.
-func NewKernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Connection) bool {
+func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Connection) bool {
 	if mechanism := conn.GetMechanism().GetType(); mechanism != kernel.MECHANISM {
 		log.FromContext(deadlineCtx).Warnf("ping is not supported for mechanism %v", mechanism)
 		return true
