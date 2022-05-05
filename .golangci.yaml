@@ -1,6 +1,7 @@
 ---
 run:
   # concurrency: 6
+  go: "1.17"
   timeout: 2m
   issues-exit-code: 1
   tests: true
@@ -24,12 +25,12 @@ linters-settings:
           - (github.com/sirupsen/logrus.FieldLogger).Warnf
           - (github.com/sirupsen/logrus.FieldLogger).Errorf
           - (github.com/sirupsen/logrus.FieldLogger).Fatalf
-  golint:
+  revive:
     min-confidence: 0.8
   goimports:
     local-prefixes: github.com/networkservicemesh/sdk-kernel/
   gocyclo:
-    min-complexity: 15
+    min-complexity: 16
   maligned:
     suggest-new: true
   dupl:
@@ -144,7 +145,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
+    - revive
     - gosec
     - gosimple
     - govet
