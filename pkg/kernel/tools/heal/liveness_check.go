@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/tatsushid/go-fastping"
 )
@@ -35,6 +36,10 @@ const (
 // NewKernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
 // ping and checks reply. Returns false if didn't get reply.
 func NewKernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Connection) bool {
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism == nil {
+		log.FromContext(deadlineCtx).Errorf("Ping failed: wrong mechanism type")
+	}
+
 	p := fastping.NewPinger()
 	deadline, ok := deadlineCtx.Deadline()
 	if !ok {
