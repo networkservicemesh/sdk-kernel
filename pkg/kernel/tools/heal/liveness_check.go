@@ -72,5 +72,10 @@ func NewKernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Co
 		return false
 	}
 
-	return <-aliveCh
+	select {
+	case alive := <-aliveCh:
+		return alive
+	case <-deadlineCtx.Done():
+		return false
+	}
 }
