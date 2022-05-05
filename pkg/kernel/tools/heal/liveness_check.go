@@ -59,7 +59,7 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 		p.AddIPAddr(ipAddr)
 	}
 
-	var count int32 = 0
+	var count int32
 
 	p.OnRecv = func(ipAddr *net.IPAddr, d time.Duration) {
 		atomic.AddInt32(&count, 1)
