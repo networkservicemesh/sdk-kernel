@@ -20,26 +20,27 @@ package heal
 import (
 	"context"
 	"net"
-<<<<<<< HEAD
 	"sync/atomic"
-=======
-	"sync"
->>>>>>> d826125 (Add IcmpLivenessChecker)
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/sdk/pkg/networkservice/common/heal"
+	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/tatsushid/go-fastping"
 )
 
-var _ heal.LivenessChecker = ICMPLivenessChecker
+const (
+	defaultTimeout = 200 * time.Millisecond
+)
 
-// ICMPLivenessChecker is an implementation of LivenessChecker. It sends ICMP
-// pings continuously and waits for replies until the first missing reply or
-// timeout.
-func ICMPLivenessChecker(deadlineCtx context.Context, conn *networkservice.Connection) bool {
-	deadline, _ := deadlineCtx.Deadline()
+// NewKernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
+// ping and checks reply. Returns false if didn't get reply.
+func NewKernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Connection) bool {
 	p := fastping.NewPinger()
+	deadline, ok := deadlineCtx.Deadline()
+	if !ok {
+		deadline = time.Now().Add(defaultTimeout)
+	}
+
 	p.MaxRTT = time.Until(deadline)
 
 	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
@@ -58,19 +59,18 @@ func ICMPLivenessChecker(deadlineCtx context.Context, conn *networkservice.Conne
 		atomic.AddInt32(&count, 1)
 	}
 
-	alive := true
+	var aliveCh = make(chan bool)
 	p.OnIdle = func() {
-		if int(count) != addrCount {
-			alive = false
-			return
-		}
+		aliveCh <- int(atomic.LoadInt32(&count)) == addrCount
+		close(aliveCh)
 	}
 
 	err := p.Run()
 
 	if err != nil {
+		log.FromContext(deadlineCtx).Error("Ping failed: %s", err.Error())
 		return false
 	}
 
-	return alive
+	return <-aliveCh
 }

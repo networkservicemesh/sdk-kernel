@@ -16,9 +16,12 @@ require (
 	google.golang.org/genproto v0.0.0-20211129164237-f09f9a12af12 // indirect
 	google.golang.org/grpc v1.42.0
 )
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 replace github.com/networkservicemesh/sdk => ../sdk
 =======
 replace github.com/networkservicemesh/sdk => github.com/xzfc/networkservicemesh-sdk v0.0.0-20220414232223-3a19549f4efa
 >>>>>>> d826125 (Add IcmpLivenessChecker)
+=======
+>>>>>>> bd9afc5 (apply comments)
