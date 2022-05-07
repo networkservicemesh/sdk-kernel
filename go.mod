@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/networkservicemesh/api v1.3.0-rc.1.0.20220405210054-fbcde048efa5
-	github.com/networkservicemesh/sdk v0.5.1-0.20220506141607-3a426c33c317
+	github.com/networkservicemesh/sdk v0.5.1-0.20220507173809-41196bdf49db
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e
