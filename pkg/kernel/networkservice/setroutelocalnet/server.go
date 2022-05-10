@@ -17,54 +17,36 @@
 //go:build linux
 // +build linux
 
-// Package routelocalnet provides chain element that enables route_localnet flat for connection network interface
-package routelocalnet
+// Package setroutelocalnet provides chain element for setup routelocalnet property
+package setroutelocalnet
 
 import (
 	"context"
-	"fmt"
-	"os"
 
 	"github.com/golang/protobuf/ptypes/empty"
-
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 )
 
-type routeLocalNetServer struct {
+type setRouteLocalNetServer struct {
 }
 
-// NewServer - returns a new networkservice.NetworkServiceServer that writes route_localnet flag
-// for network interface on Request if enabled in mechanism
+// NewServer - returns a new networkservice.NetworkServiceServer that writes IP Tables rules template
+// to kernel mechanism
 func NewServer() networkservice.NetworkServiceServer {
-	return &routeLocalNetServer{}
+	return &setRouteLocalNetServer{}
 }
 
-func (s *routeLocalNetServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
-	conn, err := next.Server(ctx).Request(ctx, request)
-	if err != nil {
-		return nil, err
-	}
-
+func (s *setRouteLocalNetServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	mechanism := kernel.ToMechanism(request.GetConnection().GetMechanism())
-	if mechanism != nil && mechanism.GetRouteLocalNet() {
-		fo, err := os.Create(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/route_localnet", mechanism.GetInterfaceName()))
-		if err != nil {
-			return nil, err
-		}
-
-		defer func() { _ = fo.Close() }()
-
-		_, err = fo.WriteString("1")
-		if err != nil {
-			return nil, err
-		}
+	if mechanism != nil {
+		mechanism.SetRouteLocalNet(true)
 	}
 
-	return conn, nil
+	return next.Server(ctx).Request(ctx, request)
 }
 
-func (s *routeLocalNetServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
+func (s *setRouteLocalNetServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
 	return next.Server(ctx).Close(ctx, conn)
 }

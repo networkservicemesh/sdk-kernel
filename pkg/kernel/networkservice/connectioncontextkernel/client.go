@@ -24,7 +24,9 @@ package connectioncontextkernel
 import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/iptables4nattemplate"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/mtu"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/routelocalnet"
 
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/chain"
 
@@ -62,5 +64,7 @@ func NewClient() networkservice.NetworkServiceClient {
 		ipneighbors.NewClient(),
 		routes.NewClient(),
 		ipaddress.NewClient(),
+		routelocalnet.NewClient(),
+		iptables4nattemplate.NewClient(),
 	)
 }
