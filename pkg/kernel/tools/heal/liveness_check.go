@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	defaultTimeout = 4 * time.Second
+	defaultTimeout = time.Second
 	packetCount    = 4
 )
 
