@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	defaultTimeout = 200 * time.Millisecond
+	defaultTimeout = 4 * time.Second
+	packetCount    = 4
 )
 
 // KernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
@@ -47,7 +48,7 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 		deadline = time.Now().Add(defaultTimeout)
 	}
 
-	p.MaxRTT = time.Until(deadline)
+	p.MaxRTT = time.Until(deadline) / packetCount
 
 	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
 	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
@@ -68,20 +69,31 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 	var aliveCh = make(chan bool)
 	p.OnIdle = func() {
 		aliveCh <- int(atomic.LoadInt32(&count)) == addrCount
-		close(aliveCh)
+		atomic.AddInt32(&count, -count)
 	}
 
-	err := p.Run()
+	go func() {
+		for i := 0; i < packetCount; i++ {
+			err := p.Run()
+			if err != nil {
+				log.FromContext(deadlineCtx).Error("Ping failed: %s", err.Error())
+			}
+		}
+	}()
 
-	if err != nil {
-		log.FromContext(deadlineCtx).Error("Ping failed: %s", err.Error())
-		return false
-	}
-
-	select {
-	case alive := <-aliveCh:
-		return alive
-	case <-deadlineCtx.Done():
-		return false
+	packetsReceived := 0
+	for {
+		select {
+		case value := <-aliveCh:
+			if value {
+				return true
+			}
+			packetsReceived++
+			if packetsReceived == packetCount {
+				return false
+			}
+		case <-deadlineCtx.Done():
+			return false
+		}
 	}
 }
