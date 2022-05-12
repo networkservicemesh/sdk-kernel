@@ -30,21 +30,21 @@ import (
 )
 
 type setIPTablesTemplateServer struct {
-	template string
+	rulesTemplate []string
 }
 
 // NewServer - returns a new networkservice.NetworkServiceServer that writes IP Tables rules template
 // to kernel mechanism
-func NewServer(template string) networkservice.NetworkServiceServer {
+func NewServer(rulesTemplate []string) networkservice.NetworkServiceServer {
 	return &setIPTablesTemplateServer{
-		template: template,
+		rulesTemplate: rulesTemplate,
 	}
 }
 
 func (s *setIPTablesTemplateServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	mechanism := kernel.ToMechanism(request.GetConnection().GetMechanism())
 	if mechanism != nil {
-		mechanism.SetIPTables4NatTemplate(s.template)
+		mechanism.SetIPTables4NatTemplate(s.rulesTemplate)
 	}
 
 	return next.Server(ctx).Request(ctx, request)
