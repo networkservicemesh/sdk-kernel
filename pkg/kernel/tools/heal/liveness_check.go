@@ -20,17 +20,17 @@ package heal
 import (
 	"context"
 	"net"
-	"sync/atomic"
 	"time"
 
+	"github.com/go-ping/ping"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
-	"github.com/tatsushid/go-fastping"
 )
 
 const (
-	defaultTimeout = 200 * time.Millisecond
+	defaultTimeout = time.Second
+	packetCount    = 4
 )
 
 // KernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
@@ -41,47 +41,47 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 		return true
 	}
 
-	p := fastping.NewPinger()
 	deadline, ok := deadlineCtx.Deadline()
 	if !ok {
 		deadline = time.Now().Add(defaultTimeout)
 	}
 
-	p.MaxRTT = time.Until(deadline)
-
 	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
+	timeout := time.Until(deadline) / time.Duration(addrCount+1)
+
+	// This function requires string argument. Works fine with empty string.
+	pinger, err := ping.NewPinger("")
+	if err != nil {
+		log.FromContext(deadlineCtx).Errorf("Failed to create pinger: %s", err.Error())
+	}
+	pinger.SetPrivileged(true)
+	pinger.Timeout = timeout
+	pinger.Count = packetCount
+
 	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
 		addr, _, err := net.ParseCIDR(cidr)
 		if err != nil {
+			log.FromContext(deadlineCtx).Errorf("ParseCIDR failed: %s", err.Error())
 			return false
 		}
+
 		ipAddr := &net.IPAddr{IP: addr}
-		p.AddIPAddr(ipAddr)
-	}
+		pinger.SetIPAddr(ipAddr)
+		err = pinger.Run()
+		if err != nil {
+			log.FromContext(deadlineCtx).Errorf("Ping failed: %s", err.Error())
+			return false
+		}
 
-	var count int32
-
-	p.OnRecv = func(ipAddr *net.IPAddr, d time.Duration) {
-		atomic.AddInt32(&count, 1)
-	}
-
-	var aliveCh = make(chan bool)
-	p.OnIdle = func() {
-		aliveCh <- int(atomic.LoadInt32(&count)) == addrCount
-		close(aliveCh)
-	}
-
-	err := p.Run()
-
-	if err != nil {
-		log.FromContext(deadlineCtx).Error("Ping failed: %s", err.Error())
-		return false
+		if pinger.Statistics().PacketsRecv == 0 {
+			return false
+		}
 	}
 
 	select {
-	case alive := <-aliveCh:
-		return alive
 	case <-deadlineCtx.Done():
 		return false
+	default:
+		return true
 	}
 }
