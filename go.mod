@@ -5,8 +5,8 @@ go 1.18
 require (
 	github.com/go-ping/ping v0.0.0-20211130115550-779d1e919534
 	github.com/golang/protobuf v1.5.2
-	github.com/networkservicemesh/api v1.3.2-0.20220512020524-c57fd2623351
-	github.com/networkservicemesh/sdk v0.5.1-0.20220512090615-4f565a9784e0
+	github.com/networkservicemesh/api v1.3.2-0.20220512163820-8c875d61945b
+	github.com/networkservicemesh/sdk v0.5.1-0.20220512164527-dc8b0c099894
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.1-0.20220118170537-d6b03fdeb845
