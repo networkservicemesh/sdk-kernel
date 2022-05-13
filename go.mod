@@ -7,7 +7,7 @@ require (
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/networkservicemesh/api v1.3.2-0.20220512163820-8c875d61945b
-	github.com/networkservicemesh/sdk v0.5.1-0.20220513003022-4d9bebd00c37
+	github.com/networkservicemesh/sdk v0.5.1-0.20220513144854-3f01437e5b07
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.1-0.20220118170537-d6b03fdeb845
