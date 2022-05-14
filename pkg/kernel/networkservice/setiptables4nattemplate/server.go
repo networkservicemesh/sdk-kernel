@@ -44,7 +44,7 @@ func NewServer(rulesTemplate []string) networkservice.NetworkServiceServer {
 func (s *setIPTablesTemplateServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	mechanism := kernel.ToMechanism(request.GetConnection().GetMechanism())
 	if mechanism != nil {
-		mechanism.SetIPTables4NatTemplate(s.rulesTemplate)
+		mechanism.SetIPTables4NatTemplate(s.rulesTemplate...)
 	}
 
 	return next.Server(ctx).Request(ctx, request)
