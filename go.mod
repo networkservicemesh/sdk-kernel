@@ -6,8 +6,8 @@ require (
 	github.com/edwarnicke/exechelper v1.0.2
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.2
-	github.com/networkservicemesh/api v1.3.2-0.20220514193644-73abc067b2ce
-	github.com/networkservicemesh/sdk v0.5.1-0.20220514221142-f0081c8f06e7
+	github.com/networkservicemesh/api v1.3.2-0.20220516230921-edaa6f46d6ab
+	github.com/networkservicemesh/sdk v0.5.1-0.20220516231803-58c8ced2925b
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.1-0.20220118170537-d6b03fdeb845
