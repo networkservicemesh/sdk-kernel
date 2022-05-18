@@ -49,14 +49,7 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
 	timeout := time.Until(deadline) / time.Duration(addrCount+1)
 
-	// This function requires string argument. Works fine with empty string.
-	pinger, err := ping.NewPinger("")
-	if err != nil {
-		log.FromContext(deadlineCtx).Errorf("Failed to create pinger: %s", err.Error())
-	}
-	pinger.SetPrivileged(true)
-	pinger.Timeout = timeout
-	pinger.Count = packetCount
+	var pinger *ping.Pinger = nil
 
 	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
 		addr, _, err := net.ParseCIDR(cidr)
@@ -65,8 +58,17 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 			return false
 		}
 
-		ipAddr := &net.IPAddr{IP: addr}
-		pinger.SetIPAddr(ipAddr)
+		if pinger == nil {
+			pinger, err := ping.NewPinger(addr.String())
+			if err != nil {
+				log.FromContext(deadlineCtx).Errorf("Failed to create pinger: %s", err.Error())
+			}
+			pinger.SetPrivileged(true)
+			pinger.Timeout = timeout
+			pinger.Count = packetCount
+		} else {
+			pinger.SetAddr(addr.String())
+		}
 		err = pinger.Run()
 		if err != nil {
 			log.FromContext(deadlineCtx).Errorf("Ping failed: %s", err.Error())
