@@ -63,6 +63,7 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 			pinger, err = ping.NewPinger(addr.String())
 			if err != nil {
 				log.FromContext(deadlineCtx).Errorf("Failed to create pinger: %s", err.Error())
+				return false
 			}
 			pinger.SetPrivileged(true)
 			pinger.Timeout = timeout
