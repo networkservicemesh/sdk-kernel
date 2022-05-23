@@ -47,7 +47,7 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 	}
 
 	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
-	timeout := time.Until(deadline) / time.Duration(addrCount+1)
+	timeout := time.Until(deadline) / time.Duration(addrCount)
 
 	var pinger *ping.Pinger
 
@@ -66,6 +66,7 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 				return false
 			}
 			pinger.SetPrivileged(true)
+			pinger.Interval = timeout / packetCount
 			pinger.Timeout = timeout
 			pinger.Count = packetCount
 		} else {
@@ -81,11 +82,5 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 			return false
 		}
 	}
-
-	select {
-	case <-deadlineCtx.Done():
-		return false
-	default:
-		return true
-	}
+	return true
 }
