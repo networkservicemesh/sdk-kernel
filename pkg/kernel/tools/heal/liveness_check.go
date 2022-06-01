@@ -47,6 +47,10 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 	}
 
 	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
+	if addrCount == 0 {
+		log.FromContext(deadlineCtx).Debug("No dst IP address")
+		return true
+	}
 	timeout := time.Until(deadline) / time.Duration(addrCount)
 
 	var pinger *ping.Pinger
