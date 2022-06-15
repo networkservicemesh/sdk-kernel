@@ -11,6 +11,8 @@ jobs:
 
   build-and-test:
     uses: networkservicemesh/.github/.github/workflows/build-and-test.yaml@main
+    with:
+      os: '["ubuntu-latest", "macos-latest"]'
 
   golangci-lint:
     uses: networkservicemesh/.github/.github/workflows/golangci-lint.yaml@main
