@@ -14,6 +14,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build perm
+// +build perm
+
 package nshandle_test
 
 import (
@@ -36,7 +39,7 @@ const (
 	notEqualFormat = "Should not be: %#v\n"
 )
 
-func TestNSHandle_RunIn(t *testing.T) {
+func TestNSHandle_RunInPerm(t *testing.T) {
 	goleak.VerifyNone(t)
 
 	current, currErr := nshandle.Current()
