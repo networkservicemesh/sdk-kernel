@@ -41,6 +41,6 @@ jobs:
     uses: networkservicemesh/.github/.github/workflows/release-dependent-repositories.yaml@main
     with:
       tag: ${{ needs.get-tag.outputs.tag }}
-      dependent_repositories: '["sdk-vpp", "sdk-sriov"]'
+      dependent_repositories: '["sdk-vpp", "sdk-sriov", "cmd-nse-l7-proxy"]'
     secrets:
       token: ${{ secrets.NSM_BOT_GITHUB_TOKEN }}
