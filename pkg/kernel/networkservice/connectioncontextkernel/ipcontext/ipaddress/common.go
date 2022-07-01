@@ -94,13 +94,16 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		ch := make(chan netlink.AddrUpdate)
 		done := make(chan struct{})
 
-		if err = netlink.AddrSubscribeAt(targetNetNS, ch, done); err != nil {
+		if err = netlink.AddrSubscribeWithOptions(ch, done, netlink.AddrSubscribeOptions{
+			Namespace:      &targetNetNS,
+			ReceiveTimeout: &unix.Timeval{Sec: 1},
+		}); err != nil {
 			return errors.Wrapf(err, "failed to subscribe for interface address updates")
 		}
 
 		defer func() {
 			close(done)
-			// `ch` should be fully read after the `done` close to prevent goroutine leak in `netlink.AddrSubscribeAt`
+			// `ch` should be fully read after the `done` close to prevent goroutine leak in `netlink.AddrSubscribeWithOptions`
 			go func() {
 				for range ch {
 				}
