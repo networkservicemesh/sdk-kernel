@@ -10,7 +10,7 @@ require (
 	github.com/networkservicemesh/sdk v0.5.1-0.20220629100133-a8211c59d6a6
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.0
-	github.com/vishvananda/netlink v1.1.1-0.20220118170537-d6b03fdeb845
+	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	go.uber.org/goleak v1.1.12
 	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7
