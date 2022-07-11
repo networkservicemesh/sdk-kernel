@@ -77,10 +77,10 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/networkservicemesh/api v1.4.1-0.20220705145838-0b96f94a2adb h1:ElGI/wElHXwyZ3Fu7G6GoZTxlHFMck1T7Lt8DlMVz8M=
-github.com/networkservicemesh/api v1.4.1-0.20220705145838-0b96f94a2adb/go.mod h1:hOF2844BSstH1311oDMDgqqXS+kdc77htZNPRKl9mf8=
-github.com/networkservicemesh/sdk v0.5.1-0.20220706093325-9d885cffbc5c h1:0G9CkmRKxrc0L27C5Y2B0eplEAX4OpTYl6O5th3jzQc=
-github.com/networkservicemesh/sdk v0.5.1-0.20220706093325-9d885cffbc5c/go.mod h1:VnnL68V5mIqpVQBInPJWIE8wsA9VVobHiDmNE3ZAl3Q=
+github.com/networkservicemesh/api v1.4.1-0.20220711153918-a59689088578 h1:2MZD6SGFULqTgMKA8BFy7F+ldRErAyxsWht7oCwCVRM=
+github.com/networkservicemesh/api v1.4.1-0.20220711153918-a59689088578/go.mod h1:hOF2844BSstH1311oDMDgqqXS+kdc77htZNPRKl9mf8=
+github.com/networkservicemesh/sdk v0.5.1-0.20220711213025-454062d8cea6 h1:wz6G5+rIqMZqGAII9DdSAuR1LzstTvMpxsaYnHyBjjg=
+github.com/networkservicemesh/sdk v0.5.1-0.20220711213025-454062d8cea6/go.mod h1:BF31hkvYPBmpChr4XB2l9pFWK+ySvk2y2h7IdCwqt84=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
