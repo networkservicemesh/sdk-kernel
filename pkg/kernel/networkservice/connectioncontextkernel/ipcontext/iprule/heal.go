@@ -35,6 +35,15 @@ import (
 
 func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
+		_, ok := tableIDs.Load(conn.GetId())
+		if ok {
+			return nil
+		}
+
+		if len(conn.Context.IpContext.Policies) == 0 {
+			return nil
+		}
+
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return errors.WithStack(err)
@@ -46,20 +55,8 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 			return errors.WithStack(err)
 		}
 
-		ps, ok := tableIDs.Load(conn.GetId())
-		if !ok {
-			if len(conn.Context.IpContext.Policies) == 0 {
-				return nil
-			}
-			ps = make(map[int]*networkservice.PolicyRoute)
-			tableIDs.Store(conn.GetId(), ps)
-		}
-
-		// Get policies to add and to remove
-		missingPolicies, _ := getPolicyDifferences(ps, conn.Context.IpContext.Policies)
-
 		// try to find the corresponding missing policies in the network namespace of the pod
-		for _, policy := range missingPolicies {
+		for _, policy := range conn.Context.IpContext.Policies {
 			policyRule, err := policyToRule(policy)
 			if err != nil {
 				return errors.WithStack(err)
@@ -72,8 +69,10 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 						WithField("DstPort", policy.DstPort).
 						WithField("SrcPort", policy.SrcPort).
 						WithField("Table", podRules[i].Table).Debug("policy recovered")
-					ps[podRules[i].Table] = policy
-					tableIDs.Store(conn.GetId(), ps)
+					err := delRule(ctx, netlinkHandle, policy, podRules[i].Table)
+					if err != nil {
+						return errors.WithStack(err)
+					}
 					break
 				}
 			}
