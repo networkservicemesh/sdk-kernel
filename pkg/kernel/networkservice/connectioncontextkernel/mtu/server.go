@@ -42,25 +42,25 @@ type mtuServer struct {
 // It sets the MTU on the *kernel* side of an interface plugged into the
 // Endpoint.  Generally only used by privileged Endpoints like those implementing
 // the Cross Connect Network Service for K8s (formerly known as NSM Forwarder).
-//                                         Endpoint
-//                              +---------------------------+
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//          +-------------------+                           |
-//  mtu.NewServer()             |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              +---------------------------+
 //
+//	                                       Endpoint
+//	                            +---------------------------+
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	        +-------------------+                           |
+//	mtu.NewServer()             |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            |                           |
+//	                            +---------------------------+
 func NewServer() networkservice.NetworkServiceServer {
 	return &mtuServer{}
 }

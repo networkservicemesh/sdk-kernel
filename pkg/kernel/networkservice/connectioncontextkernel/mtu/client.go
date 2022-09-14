@@ -42,25 +42,25 @@ type mtuClient struct{}
 // It sets the MTU on the *kernel* side of an interface leaving the
 // Client.  Generally only used by privileged Clients like those implementing
 // the Cross Connect Network Service for K8s (formerly known as NSM Forwarder).
-//                                         Client
-//                              +---------------------------+
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           +-------------------+
-//                              |                           |          mtu.NewClient()
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              +---------------------------+
 //
+//	           Client
+//	+---------------------------+
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           +-------------------+
+//	|                           |          mtu.NewClient()
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	+---------------------------+
 func NewClient() networkservice.NetworkServiceClient {
 	return &mtuClient{}
 }

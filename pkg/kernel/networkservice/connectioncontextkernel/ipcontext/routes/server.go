@@ -39,27 +39,27 @@ type routesServer struct {
 }
 
 // NewServer creates a NetworkServiceServer that will put the routes from the connection context into
-//  connection context into the kernel network namespace kernel interface being inserted iff the
-//  selected mechanism for the connection is a kernel mechanism
-//                                                       Endpoint
-//  +- - - - - - - - - - - - - - - -+         +---------------------------+
-//  |    kernel network namespace   |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//                        +--------- ---------+                           |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//      routes.NewServer()                    |                           |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//  +- - - - - - - - - - - - - - - -+         +---------------------------+
 //
+//	connection context into the kernel network namespace kernel interface being inserted iff the
+//	selected mechanism for the connection is a kernel mechanism
+//	                                                     Endpoint
+//	+- - - - - - - - - - - - - - - -+         +---------------------------+
+//	|    kernel network namespace   |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                      +--------- ---------+                           |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	    routes.NewServer()                    |                           |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	+- - - - - - - - - - - - - - - -+         +---------------------------+
 func NewServer() networkservice.NetworkServiceServer {
 	return &routesServer{}
 }
