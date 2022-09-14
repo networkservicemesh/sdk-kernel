@@ -42,25 +42,25 @@ type ipaddressClient struct{}
 // It sets the IP Address on the *kernel* side of an interface leaving the
 // Client.  Generally only used by privileged Clients like those implementing
 // the Cross Connect Network Service for K8s (formerly known as NSM Forwarder).
-//                                         Client
-//                              +---------------------------+
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           +-------------------+
-//                              |                           |          ipaddress.NewClient()
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              |                           |
-//                              +---------------------------+
 //
+//	           Client
+//	+---------------------------+
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           +-------------------+
+//	|                           |          ipaddress.NewClient()
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	|                           |
+//	+---------------------------+
 func NewClient() networkservice.NetworkServiceClient {
 	return &ipaddressClient{}
 }

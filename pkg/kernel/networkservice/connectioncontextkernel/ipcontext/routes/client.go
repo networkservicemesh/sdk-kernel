@@ -39,27 +39,27 @@ import (
 type routesClient struct{}
 
 // NewClient creates a NetworkServiceClient that will put the routes from the connection context into
-//  the kernel network namespace kernel interface being inserted iff the
-//  selected mechanism for the connection is a kernel mechanism
-//             Client
-//  +- - - - - - - - - - - - - - - -+         +---------------------------+
-//  |                               |         |  kernel network namespace |
-//                                            |                           |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//                                  +--------- ---------+                 |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//                                            |      routes.Client()      |
-//  |                               |         |                           |
-//                                            |                           |
-//  |                               |         |                           |
-//  +- - - - - - - - - - - - - - - -+         +---------------------------+
 //
+//	the kernel network namespace kernel interface being inserted iff the
+//	selected mechanism for the connection is a kernel mechanism
+//	           Client
+//	+- - - - - - - - - - - - - - - -+         +---------------------------+
+//	|                               |         |  kernel network namespace |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                                +--------- ---------+                 |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	                                          |      routes.Client()      |
+//	|                               |         |                           |
+//	                                          |                           |
+//	|                               |         |                           |
+//	+- - - - - - - - - - - - - - - -+         +---------------------------+
 func NewClient() networkservice.NetworkServiceClient {
 	return &routesClient{}
 }

@@ -37,26 +37,25 @@ import (
 // It applies the connection context on the *kernel* side of an interface plugged into the
 // Endpoint.  Generally only used by privileged Endpoints like those implementing
 // the Cross Connect Network Service for K8s (formerly known as NSM Forwarder).
-//                                                      Endpoint
-//                                            +---------------------------+
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                        +-------------------+                           |
-//  connectioncontextkernel.NewServer()       |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            |                           |
-//                                            +---------------------------+
 //
-//
+//	                                                    Endpoint
+//	                                          +---------------------------+
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                      +-------------------+                           |
+//	connectioncontextkernel.NewServer()       |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          |                           |
+//	                                          +---------------------------+
 func NewServer() networkservice.NetworkServiceServer {
 	return chain.NewNetworkServiceServer(
 		mtu.NewServer(),
