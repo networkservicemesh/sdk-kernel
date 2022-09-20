@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2021-2022 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,6 +46,11 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
 
 	conn, err := next.Server(ctx).Request(ctx, request)
+	if err != nil {
+		return nil, err
+	}
+
+	err = recoverTableIDs(ctx, conn, &i.tables)
 	if err != nil {
 		return nil, err
 	}
