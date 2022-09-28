@@ -38,6 +38,8 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
+const DST_ADDRESS = "DST_ADDRESS"
+
 func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		// Construct the netlink handle for the target namespace for this kernel interface
@@ -82,8 +84,11 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 				policy.Routes = append(policy.Routes, defaultRoute())
 			}
 
+			nextHopList := conn.GetContext().GetIpContext().GetDstIpAddrs()
+			dstIP, _, _ := net.ParseCIDR(nextHopList[0])
+
 			for _, route := range policy.Routes {
-				if err := routeAdd(ctx, netlinkHandle, l, route, tableID); err != nil {
+				if err := routeAdd(ctx, netlinkHandle, l, route, tableID, dstIP); err != nil {
 					return errors.Wrapf(err, "failed to add route")
 				}
 			}
@@ -195,7 +200,7 @@ func defaultRoute() *networkservice.Route {
 	}
 }
 
-func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route *networkservice.Route, tableID int) error {
+func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route *networkservice.Route, tableID int, dstIP net.IP) error {
 	if route.GetPrefixIPNet() == nil {
 		return errors.New("kernelRoute prefix must not be nil")
 	}
@@ -208,7 +213,15 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route
 		Table:     tableID,
 	}
 
-	gw := route.GetNextHopIP()
+	var gw net.IP
+
+	switch {
+	case route.GetNextHop() == DST_ADDRESS:
+		gw = dstIP
+	case route.GetNextHopIP() != nil:
+		gw = route.GetNextHopIP()
+	}
+
 	if gw != nil {
 		kernelRoute.Gw = gw
 		kernelRoute.SetFlag(netlink.FLAG_ONLINK)
