@@ -7,13 +7,13 @@ require (
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.2
 	github.com/networkservicemesh/api v1.6.2-0.20221205183940-84c7ff837cdd
-	github.com/networkservicemesh/sdk v0.5.1-0.20221216223505-3057cfc335ca
+	github.com/networkservicemesh/sdk v0.5.1-0.20221218175527-12616b1aa284
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.0
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	go.uber.org/goleak v1.1.12
-	golang.org/x/sys v0.2.0
+	golang.org/x/sys v0.3.0
 	google.golang.org/grpc v1.49.0
 )
 
@@ -39,8 +39,8 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.9.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20220908141613-51c1cc9bc6d0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
