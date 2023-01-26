@@ -1,6 +1,6 @@
-// Copyright (c) 2020-2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021-2022 Nordix Foundation.
+//
+// Copyright (c) 2020-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -73,14 +73,14 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		var forwarderNetNS netns.NsHandle
 		forwarderNetNS, err = nshandle.Current()
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer func() { _ = forwarderNetNS.Close() }()
 
 		var targetNetNS netns.NsHandle
 		targetNetNS, err = nshandle.FromURL(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer func() { _ = targetNetNS.Close() }()
 

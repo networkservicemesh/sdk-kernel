@@ -1,5 +1,7 @@
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -162,7 +164,7 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID int) error {
 	rule, err := policyToRule(policy)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	rule.Table = tableID
 
@@ -243,14 +245,14 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) er
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 		ps, ok := tableIDs.LoadAndDelete(conn.GetId())
 		if ok {
 			for tableID, policy := range ps {
 				if err := delRule(ctx, netlinkHandle, policy, tableID); err != nil {
-					return errors.WithStack(err)
+					return err
 				}
 			}
 		}
@@ -261,7 +263,7 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) er
 func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID int) error {
 	rule, err := policyToRule(policy)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	if err := flushTable(ctx, handle, tableID); err != nil {
@@ -277,7 +279,7 @@ func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice
 			WithField("SrcPort", policy.SrcPort).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleDel").Errorf("error %+v", err)
-		return errors.Wrapf(errors.WithStack(err), "failed to delete rule")
+		return errors.Wrapf(err, "failed to delete rule")
 	}
 	log.FromContext(ctx).
 		WithField("From", policy.From).
@@ -296,12 +298,12 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID int) error 
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
-		return errors.Wrapf(errors.WithStack(err), "failed to list routes")
+		return errors.Wrapf(err, "failed to list routes")
 	}
 	for i := 0; i < len(routes); i++ {
 		err := handle.RouteDel(&routes[i])
 		if err != nil {
-			return errors.Wrapf(errors.WithStack(err), "failed to delete route")
+			return errors.Wrapf(err, "failed to delete route")
 		}
 	}
 	log.FromContext(ctx).
@@ -317,7 +319,7 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
-		return 0, errors.Wrapf(errors.WithStack(err), "getFreeTableID: failed to list routes")
+		return 0, errors.Wrapf(err, "getFreeTableID: failed to list routes")
 	}
 
 	// tableID = 0 is reserved

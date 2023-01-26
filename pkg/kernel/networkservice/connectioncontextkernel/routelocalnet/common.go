@@ -1,5 +1,7 @@
 // Copyright (c) 2022 Xored Software Inc and others.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +27,7 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
@@ -48,14 +51,14 @@ func setRouteLocalNet(conn *networkservice.Connection) error {
 			fo, fileErr := os.Create(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/route_localnet", mechanism.GetInterfaceName()))
 
 			if fileErr != nil {
-				return fileErr
+				return errors.WithStack(fileErr)
 			}
 
 			defer func() { _ = fo.Close() }()
 
 			_, fileErr = fo.WriteString("1")
 			if fileErr != nil {
-				return fileErr
+				return errors.WithStack(fileErr)
 			}
 
 			return nil
