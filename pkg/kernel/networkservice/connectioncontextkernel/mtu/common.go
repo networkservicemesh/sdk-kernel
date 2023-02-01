@@ -1,6 +1,6 @@
-// Copyright (c) 2021-2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021-2022 Nordix Foundation.
+//
+// Copyright (c) 2021-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -45,19 +45,18 @@ func setMTU(ctx context.Context, conn *networkservice.Connection) error {
 
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
-
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to enable link device %s", l.Attrs().Name)
 		}
 
 		now := time.Now()

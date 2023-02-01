@@ -55,19 +55,18 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
-
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to enable link device %s", l.Attrs().Name)
 		}
 
 		var forwarderNetNS netns.NsHandle

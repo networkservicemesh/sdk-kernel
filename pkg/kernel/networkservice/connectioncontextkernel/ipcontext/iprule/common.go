@@ -45,13 +45,14 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 		// Construct the netlink handle for the target namespace for this kernel interface
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
-		l, err := netlinkHandle.LinkByName(mechanism.GetInterfaceName())
+		ifName := mechanism.GetInterfaceName()
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		ps, ok := tableIDs.Load(conn.GetId())
@@ -77,7 +78,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 		for _, policy := range toAdd {
 			tableID, err := getFreeTableID(ctx, netlinkHandle)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get free tableId")
+				return err
 			}
 			// If policy doesn't contain any route - add default
 			if len(policy.Routes) == 0 {
@@ -86,11 +87,11 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 
 			for _, route := range policy.Routes {
 				if err := routeAdd(ctx, netlinkHandle, l, route, tableID); err != nil {
-					return errors.Wrapf(err, "failed to add route")
+					return err
 				}
 			}
 			if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
-				return errors.Wrapf(err, "failed to add rule")
+				return err
 			}
 			ps[tableID] = policy
 			tableIDs.Store(conn.GetId(), ps)
@@ -133,27 +134,27 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 	if policy.From != "" {
 		src, err := netlink.ParseIPNet(policy.From)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrapf(err, "failed to parse string %s in ip/net format", policy.From)
 		}
 		rule.Src = src
 	}
 	if policy.Proto != "" {
 		protocol, err := strconv.Atoi(policy.Proto)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrapf(err, "failed to parse ip protocol number %s", policy.Proto)
 		}
 		rule.IPProto = protocol
 	}
 	dstPortRange, err := networkservice.ParsePortRange(policy.DstPort)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "failed to parse port range %s", policy.DstPort)
 	}
 	if dstPortRange != nil {
 		rule.Dport = netlink.NewRulePortRange(dstPortRange.Start, dstPortRange.End)
 	}
 	srcPortRange, err := networkservice.ParsePortRange(policy.SrcPort)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "failed to parse port range %s", policy.DstPort)
 	}
 	if srcPortRange != nil {
 		rule.Sport = netlink.NewRulePortRange(srcPortRange.Start, srcPortRange.End)
@@ -178,7 +179,7 @@ func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleAdd").Errorf("error %+v", err)
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to add rule")
 	}
 	log.FromContext(ctx).
 		WithField("From", policy.From).
@@ -227,7 +228,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RouteReplace").Errorf("error %+v", err)
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to add route")
 	}
 	log.FromContext(ctx).
 		WithField("link.Name", l.Attrs().Name).

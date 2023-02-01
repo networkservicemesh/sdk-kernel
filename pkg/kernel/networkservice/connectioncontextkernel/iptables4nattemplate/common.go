@@ -87,13 +87,13 @@ func (m *iptableManagerImpl) Apply(rules []string) error {
 func (m *iptableManagerImpl) writeTmpRule(rules string) (string, error) {
 	fo, err := os.CreateTemp("/tmp", "rules-*")
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", errors.Wrapf(err, "failed to create new temporary file")
 	}
 
 	defer func() { _ = fo.Close() }()
 	_, err = fo.WriteString(rules)
 	if err != nil {
-		return "", errors.WithStack(err)
+		return "", errors.Wrap(err, "failed to write to temporary file")
 	}
 
 	return fo.Name(), nil
@@ -153,14 +153,14 @@ func applyIptablesRules(ctx context.Context, conn *networkservice.Connection, c 
 		err = nshandle.RunIn(currentNsHandler, targetHsHandler, func() error {
 			initialRules, iptableErr := c.manager.Get()
 			if iptableErr != nil {
-				return errors.WithStack(iptableErr)
+				return errors.Wrap(iptableErr, "failed to get iptables rules")
 			}
 
 			ctxMap.Store(applyIPTablesKey{}, initialRules)
 
 			iptableErr = c.manager.Apply(rules)
 			if iptableErr != nil {
-				return errors.WithStack(iptableErr)
+				return errors.Wrap(iptableErr, "failed to apply iptables rules")
 			}
 
 			return nil

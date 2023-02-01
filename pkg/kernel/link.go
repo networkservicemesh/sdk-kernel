@@ -1,8 +1,8 @@
-// Copyright (c) 2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2020-2022 Intel Corporation. All Rights Reserved.
 //
 // Copyright (c) 2021-2022 Nordix Foundation.
+//
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -290,19 +290,19 @@ func searchByName(ns netns.NsHandle, name, pciAddress string) (netlink.Link, err
 func GetNetlinkHandle(urlString string) (*netlink.Handle, error) {
 	curNSHandle, err := nshandle.Current()
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	defer func() { _ = curNSHandle.Close() }()
 
 	nsHandle, err := nshandle.FromURL(urlString)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, err
 	}
 	defer func() { _ = nsHandle.Close() }()
 
 	handle, err := netlink.NewHandleAtFrom(nsHandle, curNSHandle)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrap(err, "failed to create netlink NS handle")
 	}
 	return handle, nil
 }

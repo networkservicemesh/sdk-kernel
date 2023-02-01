@@ -24,6 +24,7 @@ package routelocalnet
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
@@ -48,17 +49,17 @@ func setRouteLocalNet(conn *networkservice.Connection) error {
 		defer func() { _ = targetHsHandler.Close() }()
 
 		err = nshandle.RunIn(currentNsHandler, targetHsHandler, func() error {
-			fo, fileErr := os.Create(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/route_localnet", mechanism.GetInterfaceName()))
-
+			file := filepath.Clean(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/route_localnet", mechanism.GetInterfaceName()))
+			fo, fileErr := os.Create(file)
 			if fileErr != nil {
-				return errors.WithStack(fileErr)
+				return errors.Wrapf(fileErr, "failed to create file %s", file)
 			}
 
 			defer func() { _ = fo.Close() }()
 
 			_, fileErr = fo.WriteString("1")
 			if fileErr != nil {
-				return errors.WithStack(fileErr)
+				return errors.Wrapf(fileErr, "failed to write to file %s", file)
 			}
 
 			return nil

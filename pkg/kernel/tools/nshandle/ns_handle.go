@@ -34,7 +34,7 @@ func Current() (handle netns.NsHandle, err error) {
 
 	nsHandle, err := netns.Get()
 	if err != nil {
-		return -1, errors.WithStack(err)
+		return -1, errors.Wrap(err, "failed to create net NS handle")
 	}
 
 	return nsHandle, nil
@@ -63,7 +63,7 @@ func RunIn(current, target netns.NsHandle, runner func() error) error {
 
 	curr, err := netns.Get()
 	if err != nil {
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to create net NS handle")
 	}
 	defer func() { _ = curr.Close() }()
 

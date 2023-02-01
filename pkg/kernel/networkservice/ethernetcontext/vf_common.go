@@ -1,6 +1,6 @@
-// Copyright (c) 2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021-2022 Nordix Foundation.
+//
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -41,15 +41,14 @@ func setKernelHwAddress(ctx context.Context, conn *networkservice.Connection, is
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
-
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		if ethernetContext := conn.GetContext().GetEthernetContext(); ethernetContext != nil {
@@ -71,13 +70,13 @@ func setKernelHwAddress(ctx context.Context, conn *networkservice.Connection, is
 					return nil
 				}
 				if err = netlinkHandle.LinkSetDown(l); err != nil {
-					return errors.WithStack(err)
+					return errors.Wrapf(err, "failed to disable link device %s", l.Attrs().Name)
 				}
 				if err = netlinkHandle.LinkSetHardwareAddr(l, macAddr); err != nil {
 					return errors.Wrapf(err, "failed to set MAC address for the VF: %v", macAddr)
 				}
 				if err = netlinkHandle.LinkSetUp(l); err != nil {
-					return errors.WithStack(err)
+					return errors.Wrapf(err, "failed to enable link device %s", l.Attrs().Name)
 				}
 				log.FromContext(ctx).
 					WithField("link.Name", l.Attrs().Name).

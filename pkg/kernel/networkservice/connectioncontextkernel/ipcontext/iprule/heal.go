@@ -48,13 +48,13 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		podRules, err := netlinkHandle.RuleList(netlink.FAMILY_ALL)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "failed to get list of rules")
 		}
 
 		// try to find the corresponding missing policies in the network namespace of the pod
