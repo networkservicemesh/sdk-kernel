@@ -56,7 +56,7 @@ func setMTU(ctx context.Context, conn *networkservice.Connection) error {
 		}
 
 		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.Wrapf(err, "failed to enable link device %s", l.Attrs().Name)
+			return errors.Wrapf(err, "failed to setup link for the interface %v", l)
 		}
 
 		now := time.Now()

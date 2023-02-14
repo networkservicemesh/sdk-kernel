@@ -76,7 +76,7 @@ func setKernelHwAddress(ctx context.Context, conn *networkservice.Connection, is
 					return errors.Wrapf(err, "failed to set MAC address for the VF: %v", macAddr)
 				}
 				if err = netlinkHandle.LinkSetUp(l); err != nil {
-					return errors.Wrapf(err, "failed to enable link device %s", l.Attrs().Name)
+					return errors.Wrapf(err, "failed to setup link for the interface %v", l)
 				}
 				log.FromContext(ctx).
 					WithField("link.Name", l.Attrs().Name).

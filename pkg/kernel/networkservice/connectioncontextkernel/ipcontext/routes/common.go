@@ -50,7 +50,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		}
 
 		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.Wrapf(err, "failed to enable link device %s", l.Attrs().Name)
+			return errors.Wrapf(err, "failed to setup link for the interface %v", l)
 		}
 
 		var linkRoutes []*networkservice.Route
