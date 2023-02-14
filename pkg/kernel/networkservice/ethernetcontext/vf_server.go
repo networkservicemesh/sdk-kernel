@@ -1,8 +1,8 @@
-// Copyright (c) 2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
 //
 // Copyright (c) 2021-2022 Nordix Foundation.
+//
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -32,6 +32,7 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
@@ -46,19 +47,24 @@ func NewVFServer() networkservice.NetworkServiceServer {
 
 func (s *vfEthernetContextServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
 	postponeCtxFunc := postpone.ContextWithValues(ctx)
-	if vfConfig, ok := vfconfig.Load(ctx, false); ok {
-		err := vfCreate(vfConfig, request.Connection, false)
-		if err != nil {
-			return nil, err
-		}
-	}
 
 	conn, err := next.Server(ctx).Request(ctx, request)
 	if err != nil {
 		return nil, err
 	}
 
-	if _, ok := vfconfig.Load(ctx, false); !ok {
+	if vfConfig, ok := vfconfig.Load(ctx, false); ok {
+		if err := vfCreate(ctx, vfConfig, conn, false); err != nil {
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
+
+			if _, closeErr := s.Close(closeCtx, conn); closeErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+			}
+
+			return nil, err
+		}
+	} else {
 		if err := setKernelHwAddress(ctx, conn, false); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
@@ -74,5 +80,10 @@ func (s *vfEthernetContextServer) Request(ctx context.Context, request *networks
 }
 
 func (s *vfEthernetContextServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
+	if vfConfig, ok := vfconfig.Load(ctx, false); ok {
+		if err := vfCleanup(ctx, vfConfig); err != nil {
+			log.FromContext(ctx).Errorf("vfEthernetContextServer vfClear: %v", err.Error())
+		}
+	}
 	return next.Server(ctx).Close(ctx, conn)
 }
