@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,20 +48,20 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		podRules, err := netlinkHandle.RuleList(netlink.FAMILY_ALL)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrap(err, "failed to get list of rules")
 		}
 
 		// try to find the corresponding missing policies in the network namespace of the pod
 		for _, policy := range conn.Context.IpContext.Policies {
 			policyRule, err := policyToRule(policy)
 			if err != nil {
-				return errors.WithStack(err)
+				return err
 			}
 			for i := range podRules {
 				if ruleEquals(&podRules[i], policyRule) {
@@ -71,7 +73,7 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 						WithField("Table", podRules[i].Table).Debug("policy recovered")
 					err := delRule(ctx, netlinkHandle, policy, podRules[i].Table)
 					if err != nil {
-						return errors.WithStack(err)
+						return err
 					}
 					break
 				}

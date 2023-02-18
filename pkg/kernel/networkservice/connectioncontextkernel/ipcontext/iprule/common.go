@@ -1,5 +1,7 @@
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,13 +45,14 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 		// Construct the netlink handle for the target namespace for this kernel interface
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
-		l, err := netlinkHandle.LinkByName(mechanism.GetInterfaceName())
+		ifName := mechanism.GetInterfaceName()
+		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		ps, ok := tableIDs.Load(conn.GetId())
@@ -75,7 +78,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 		for _, policy := range toAdd {
 			tableID, err := getFreeTableID(ctx, netlinkHandle)
 			if err != nil {
-				return errors.Wrapf(err, "failed to get free tableId")
+				return err
 			}
 			// If policy doesn't contain any route - add default
 			if len(policy.Routes) == 0 {
@@ -84,11 +87,11 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 
 			for _, route := range policy.Routes {
 				if err := routeAdd(ctx, netlinkHandle, l, route, tableID); err != nil {
-					return errors.Wrapf(err, "failed to add route")
+					return err
 				}
 			}
 			if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
-				return errors.Wrapf(err, "failed to add rule")
+				return err
 			}
 			ps[tableID] = policy
 			tableIDs.Store(conn.GetId(), ps)
@@ -131,27 +134,27 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 	if policy.From != "" {
 		src, err := netlink.ParseIPNet(policy.From)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrapf(err, "failed to parse string %s in ip/net format", policy.From)
 		}
 		rule.Src = src
 	}
 	if policy.Proto != "" {
 		protocol, err := strconv.Atoi(policy.Proto)
 		if err != nil {
-			return nil, errors.WithStack(err)
+			return nil, errors.Wrapf(err, "failed to parse ip protocol number %s", policy.Proto)
 		}
 		rule.IPProto = protocol
 	}
 	dstPortRange, err := networkservice.ParsePortRange(policy.DstPort)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "failed to parse port range %s", policy.DstPort)
 	}
 	if dstPortRange != nil {
 		rule.Dport = netlink.NewRulePortRange(dstPortRange.Start, dstPortRange.End)
 	}
 	srcPortRange, err := networkservice.ParsePortRange(policy.SrcPort)
 	if err != nil {
-		return nil, errors.WithStack(err)
+		return nil, errors.Wrapf(err, "failed to parse port range %s", policy.DstPort)
 	}
 	if srcPortRange != nil {
 		rule.Sport = netlink.NewRulePortRange(srcPortRange.Start, srcPortRange.End)
@@ -162,7 +165,7 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID int) error {
 	rule, err := policyToRule(policy)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	rule.Table = tableID
 
@@ -176,7 +179,7 @@ func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleAdd").Errorf("error %+v", err)
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to add rule")
 	}
 	log.FromContext(ctx).
 		WithField("From", policy.From).
@@ -225,7 +228,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RouteReplace").Errorf("error %+v", err)
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to add route")
 	}
 	log.FromContext(ctx).
 		WithField("link.Name", l.Attrs().Name).
@@ -243,14 +246,14 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) er
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 		ps, ok := tableIDs.LoadAndDelete(conn.GetId())
 		if ok {
 			for tableID, policy := range ps {
 				if err := delRule(ctx, netlinkHandle, policy, tableID); err != nil {
-					return errors.WithStack(err)
+					return err
 				}
 			}
 		}
@@ -261,7 +264,7 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) er
 func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID int) error {
 	rule, err := policyToRule(policy)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	if err := flushTable(ctx, handle, tableID); err != nil {
@@ -277,7 +280,7 @@ func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice
 			WithField("SrcPort", policy.SrcPort).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleDel").Errorf("error %+v", err)
-		return errors.Wrapf(errors.WithStack(err), "failed to delete rule")
+		return errors.Wrapf(err, "failed to delete rule")
 	}
 	log.FromContext(ctx).
 		WithField("From", policy.From).
@@ -296,12 +299,12 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID int) error 
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
-		return errors.Wrapf(errors.WithStack(err), "failed to list routes")
+		return errors.Wrapf(err, "failed to list routes")
 	}
 	for i := 0; i < len(routes); i++ {
 		err := handle.RouteDel(&routes[i])
 		if err != nil {
-			return errors.Wrapf(errors.WithStack(err), "failed to delete route")
+			return errors.Wrapf(err, "failed to delete route")
 		}
 	}
 	log.FromContext(ctx).
@@ -317,7 +320,7 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
-		return 0, errors.Wrapf(errors.WithStack(err), "getFreeTableID: failed to list routes")
+		return 0, errors.Wrapf(err, "getFreeTableID: failed to list routes")
 	}
 
 	// tableID = 0 is reserved

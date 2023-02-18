@@ -1,8 +1,8 @@
-// Copyright (c) 2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
+//
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -46,19 +46,18 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
-
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		if err := setIPContextNeighbors(ctx, netlinkHandle, conn.GetContext().GetIpContext().GetIpNeighbors(), l); err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 
 		// If payload is IP - we need to add additional neighbor
@@ -140,7 +139,7 @@ func setPeerNeighbor(ctx context.Context, handle *netlink.Handle, l, peerLink ne
 			WithField("hardwareAddr", neigh.HardwareAddr).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "NeighSet").Error("setPeerNeighbor failed")
-		return errors.WithStack(err)
+		return errors.Wrapf(err, "failed to update ARP table with %s %s", neigh.IP.String(), neigh.HardwareAddr.String())
 	}
 	log.FromContext(ctx).
 		WithField("linkIndex", neigh.LinkIndex).

@@ -1,5 +1,7 @@
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +32,12 @@ func Current() (handle netns.NsHandle, err error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	return netns.Get()
+	nsHandle, err := netns.Get()
+	if err != nil {
+		return -1, errors.Wrap(err, "failed to get net NS handle")
+	}
+
+	return nsHandle, nil
 }
 
 // FromURL creates net NS handle by file://path URL
@@ -56,7 +63,7 @@ func RunIn(current, target netns.NsHandle, runner func() error) error {
 
 	curr, err := netns.Get()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to get net NS handle")
 	}
 	defer func() { _ = curr.Close() }()
 

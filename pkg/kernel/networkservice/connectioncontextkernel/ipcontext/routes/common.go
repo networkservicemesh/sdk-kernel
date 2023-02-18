@@ -1,6 +1,6 @@
-// Copyright (c) 2020-2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021-2022 Nordix Foundation.
+//
+// Copyright (c) 2020-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -39,19 +39,18 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
 		defer netlinkHandle.Close()
 
 		ifName := mechanism.GetInterfaceName()
-
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
 
 		if err = netlinkHandle.LinkSetUp(l); err != nil {
-			return errors.WithStack(err)
+			return errors.Wrapf(err, "failed to setup link for the interface %v", l)
 		}
 
 		var linkRoutes []*networkservice.Route
@@ -106,7 +105,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, scope
 			WithField("Flags", kernelRoute.Flags).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RouteReplace").Errorf("error %+v", err)
-		return errors.WithStack(err)
+		return errors.Wrap(err, "failed to add route")
 	}
 	log.FromContext(ctx).
 		WithField("link.Name", l.Attrs().Name).

@@ -1,5 +1,7 @@
 // Copyright (c) 2022 Xored Software Inc and others.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,8 +59,7 @@ func (m *iptableManagerImpl) Get() (string, error) {
 		exechelper.WithStderr(buf),
 	)
 	if err != nil {
-		err = errors.Wrapf(err, "%s", buf.String())
-		return "", err
+		return "", errors.Wrapf(err, "%s", buf.String())
 	}
 
 	return buf.String(), nil
@@ -76,8 +77,7 @@ func (m *iptableManagerImpl) Apply(rules []string) error {
 			exechelper.WithStderr(buf),
 		)
 		if err != nil {
-			err = errors.Wrapf(err, "%s", buf.String())
-			return err
+			return errors.Wrapf(err, "%s", buf.String())
 		}
 	}
 
@@ -87,13 +87,13 @@ func (m *iptableManagerImpl) Apply(rules []string) error {
 func (m *iptableManagerImpl) writeTmpRule(rules string) (string, error) {
 	fo, err := os.CreateTemp("/tmp", "rules-*")
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "failed to create new temporary file")
 	}
 
 	defer func() { _ = fo.Close() }()
 	_, err = fo.WriteString(rules)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "failed to write to temporary file")
 	}
 
 	return fo.Name(), nil
@@ -116,8 +116,7 @@ func (m *iptableManagerImpl) Restore(rules string) error {
 		exechelper.WithStderr(buf),
 	)
 	if err != nil {
-		err = errors.Wrapf(err, "%s", buf.String())
-		return err
+		return errors.Wrapf(err, "%s", buf.String())
 	}
 
 	return nil
@@ -136,7 +135,7 @@ func applyIptablesRules(ctx context.Context, conn *networkservice.Connection, c 
 	if mechanism != nil && len(mechanism.GetIPTables4NatTemplate()) != 0 {
 		rules, err := mechanism.EvaluateIPTables4NatTemplate(conn)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 
 		currentNsHandler, err := nshandle.Current()
@@ -154,14 +153,14 @@ func applyIptablesRules(ctx context.Context, conn *networkservice.Connection, c 
 		err = nshandle.RunIn(currentNsHandler, targetHsHandler, func() error {
 			initialRules, iptableErr := c.manager.Get()
 			if iptableErr != nil {
-				return iptableErr
+				return errors.Wrap(iptableErr, "failed to get iptables rules")
 			}
 
 			ctxMap.Store(applyIPTablesKey{}, initialRules)
 
 			iptableErr = c.manager.Apply(rules)
 			if iptableErr != nil {
-				return iptableErr
+				return errors.Wrap(iptableErr, "failed to apply iptables rules")
 			}
 
 			return nil

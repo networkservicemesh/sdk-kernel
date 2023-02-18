@@ -1,5 +1,7 @@
 // Copyright (c) 2022 Xored Software Inc and others.
 //
+// Copyright (c) 2023 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,9 +24,11 @@ package routelocalnet
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	"github.com/pkg/errors"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
@@ -45,17 +49,17 @@ func setRouteLocalNet(conn *networkservice.Connection) error {
 		defer func() { _ = targetHsHandler.Close() }()
 
 		err = nshandle.RunIn(currentNsHandler, targetHsHandler, func() error {
-			fo, fileErr := os.Create(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/route_localnet", mechanism.GetInterfaceName()))
-
+			file := filepath.Clean(fmt.Sprintf("/proc/sys/net/ipv4/conf/%s/route_localnet", mechanism.GetInterfaceName()))
+			fo, fileErr := os.Create(file)
 			if fileErr != nil {
-				return fileErr
+				return errors.Wrapf(fileErr, "failed to create file %s", file)
 			}
 
 			defer func() { _ = fo.Close() }()
 
 			_, fileErr = fo.WriteString("1")
 			if fileErr != nil {
-				return fileErr
+				return errors.Wrapf(fileErr, "failed to write to file %s", file)
 			}
 
 			return nil
