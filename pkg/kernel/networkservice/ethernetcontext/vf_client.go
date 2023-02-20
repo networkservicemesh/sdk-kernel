@@ -1,8 +1,8 @@
-// Copyright (c) 2022 Cisco and/or its affiliates.
-//
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
 // Copyright (c) 2021-2022 Doc.ai and/or its affiliates.
+//
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -32,6 +32,7 @@ import (
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
+	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/vfconfig"
@@ -53,7 +54,7 @@ func (i *vfEthernetClient) Request(ctx context.Context, request *networkservice.
 	}
 
 	if vfConfig, ok := vfconfig.Load(ctx, true); ok {
-		if err := vfCreate(vfConfig, conn, true); err != nil {
+		if err := vfCreate(ctx, vfConfig, conn, true); err != nil {
 			closeCtx, cancelClose := postponeCtxFunc()
 			defer cancelClose()
 
@@ -80,5 +81,10 @@ func (i *vfEthernetClient) Request(ctx context.Context, request *networkservice.
 }
 
 func (i *vfEthernetClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
+	if vfConfig, ok := vfconfig.Load(ctx, true); ok {
+		if err := vfCleanup(ctx, vfConfig); err != nil {
+			log.FromContext(ctx).Errorf("vfEthernetClient vfClear: %v", err.Error())
+		}
+	}
 	return next.Client(ctx).Close(ctx, conn, opts...)
 }

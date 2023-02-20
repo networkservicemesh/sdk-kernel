@@ -89,7 +89,7 @@ func setKernelHwAddress(ctx context.Context, conn *networkservice.Connection, is
 	return nil
 }
 
-func vfCreate(vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isClient bool) error {
+func vfCreate(ctx context.Context, vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isClient bool) error {
 	pfLink, err := netlink.LinkByName(vfConfig.PFInterfaceName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get PF network interface: %v", vfConfig.PFInterfaceName)
@@ -103,6 +103,7 @@ func vfCreate(vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isCl
 			macAddrString = ethernetContext.GetSrcMac()
 		}
 		if macAddrString != "" {
+			now := time.Now()
 			var macAddr net.HardwareAddr
 			macAddr, err = net.ParseMAC(macAddrString)
 			if err != nil {
@@ -111,13 +112,57 @@ func vfCreate(vfConfig *vfconfig.VFConfig, conn *networkservice.Connection, isCl
 			if err = netlink.LinkSetVfHardwareAddr(pfLink, vfConfig.VFNum, macAddr); err != nil {
 				return errors.Wrapf(err, "failed to set MAC address for the VF: %v", macAddr)
 			}
+			log.FromContext(ctx).
+				WithField("pfLink", pfLink.Attrs().Name).
+				WithField("vf", vfConfig.VFNum).
+				WithField("MACAddr", macAddrString).
+				WithField("duration", time.Since(now)).
+				WithField("netlink", "LinkSetVfHardwareAddr").Debug("completed")
 		}
 		if vlanTag := int(ethernetContext.GetVlanTag()); vlanTag != 0 {
+			now := time.Now()
 			if err = netlink.LinkSetVfVlan(pfLink, vfConfig.VFNum, vlanTag); err != nil {
 				return errors.Wrapf(err, "failed to set VLAN for the VF: %v", vlanTag)
 			}
+			log.FromContext(ctx).
+				WithField("pfLink", pfLink.Attrs().Name).
+				WithField("vf", vfConfig.VFNum).
+				WithField("vlan", vlanTag).
+				WithField("duration", time.Since(now)).
+				WithField("netlink", "LinkSetVfVlan").Debug("completed")
 		}
 	}
+
+	return nil
+}
+
+func vfCleanup(ctx context.Context, vfConfig *vfconfig.VFConfig) error {
+	pfLink, err := netlink.LinkByName(vfConfig.PFInterfaceName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get PF network interface: %v", vfConfig.PFInterfaceName)
+	}
+
+	now := time.Now()
+	if err = netlink.LinkSetVfHardwareAddr(pfLink, vfConfig.VFNum, make([]byte, 32)); err != nil {
+		return errors.Wrap(err, "failed to set zero MAC address for the VF")
+	}
+	log.FromContext(ctx).
+		WithField("pfLink", pfLink.Attrs().Name).
+		WithField("vf", vfConfig.VFNum).
+		WithField("MACAddr", "00:00:00:00:00:00").
+		WithField("duration", time.Since(now)).
+		WithField("netlink", "LinkSetVfHardwareAddr").Debug("completed")
+
+	now = time.Now()
+	if err = netlink.LinkSetVfVlan(pfLink, vfConfig.VFNum, 0); err != nil {
+		return errors.Wrapf(err, "failed to set default VLAN for the VF")
+	}
+	log.FromContext(ctx).
+		WithField("pfLink", pfLink.Attrs().Name).
+		WithField("vf", vfConfig.VFNum).
+		WithField("vlan", 0).
+		WithField("duration", time.Since(now)).
+		WithField("netlink", "LinkSetVfVlan").Debug("completed")
 
 	return nil
 }
