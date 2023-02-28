@@ -17,6 +17,8 @@ require (
 	google.golang.org/grpc v1.49.0
 )
 
+replace github.com/networkservicemesh/api => github.com/NikitaSkrynnik/api v1.0.1-0.20230220065104-764c4cfa60af
+
 require (
 	github.com/antonfisher/nested-logrus-formatter v1.3.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect

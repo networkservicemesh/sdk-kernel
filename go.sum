@@ -33,6 +33,8 @@ cloud.google.com/go/storage v1.10.0/go.mod h1:FLPqc6j+Ki4BU591ie1oL6qBQGu2Bl/tZ9
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
+github.com/NikitaSkrynnik/api v1.0.1-0.20230220065104-764c4cfa60af h1:oE1Va9zWwZ3TPzz/HSHjIP8way2X/agImBIMCKcQ7qk=
+github.com/NikitaSkrynnik/api v1.0.1-0.20230220065104-764c4cfa60af/go.mod h1:010GxyVVS9my4+HOMA62M19kndO2pXUfNUbWO8bxQJg=
 github.com/OneOfOne/xxhash v1.2.2/go.mod h1:HSdplMjZKSmBqAxg5vPj2TmRDmfkzw+cTzAElWljhcU=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/antonfisher/nested-logrus-formatter v1.3.1 h1:NFJIr+pzwv5QLHTPyKz9UMEoHck02Q9L0FP13b/xSbQ=
@@ -154,8 +156,6 @@ github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORN
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0 h1:45sCR5RtlFHMR4UwH9sdQ5TC8v0qDQCHnXt+kaKSTVE=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/networkservicemesh/api v1.7.2-0.20230123083145-4a6c3ec589e1 h1:RxNKksXsXsnDsEo+Cfn43pdPfML024ad//QcdKfgXK4=
-github.com/networkservicemesh/api v1.7.2-0.20230123083145-4a6c3ec589e1/go.mod h1:hOF2844BSstH1311oDMDgqqXS+kdc77htZNPRKl9mf8=
 github.com/networkservicemesh/sdk v0.5.1-0.20230227075049-9a7d5a4b2da3 h1:FhEw4Ua6jcjysbpKo7GoZYIjVhahvv0rh/GS8rgvdQo=
 github.com/networkservicemesh/sdk v0.5.1-0.20230227075049-9a7d5a4b2da3/go.mod h1:4w0ue1+jI3lHNdSr+rzSpFIBwoGfM5vRcjVkNKZNRxk=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
