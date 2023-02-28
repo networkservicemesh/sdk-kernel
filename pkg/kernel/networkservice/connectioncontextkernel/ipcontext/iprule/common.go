@@ -159,6 +159,14 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 	if srcPortRange != nil {
 		rule.Sport = netlink.NewRulePortRange(srcPortRange.Start, srcPortRange.End)
 	}
+
+	if policy.Mark != "" {
+		mark, err := strconv.Atoi(policy.Mark)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to parse mark %s", policy.Mark)
+		}
+		rule.Mark = mark
+	}
 	return rule, nil
 }
 
