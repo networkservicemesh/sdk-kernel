@@ -25,6 +25,7 @@
 package kernel
 
 import (
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -172,18 +173,6 @@ func (l *link) GetLink() netlink.Link {
 // address and/or target interface name.
 func FindHostDevice(pciAddress, name string, namespaces ...netns.NsHandle) (Link, error) {
 	// TODO: add support for shared l interfaces (like Mellanox NICs)
-
-	current, err := nshandle.Current()
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if err := netns.Set(current); err != nil {
-			panic(errors.Wrapf(err, "failed to switch back to the current net NS: %v", current).Error())
-		}
-		_ = current.Close()
-	}()
-
 	attempts := []func(netns.NsHandle, string, string) (netlink.Link, error){
 		searchByPCIAddress,
 		searchByName,
@@ -210,37 +199,44 @@ func FindHostDevice(pciAddress, name string, namespaces ...netns.NsHandle) (Link
 
 func searchByPCIAddress(ns netns.NsHandle, name, pciAddress string) (netlink.Link, error) {
 	// execute in context of the pod's namespace
-	err := netns.Set(ns)
+	currentNs, err := nshandle.Current()
 	if err != nil {
-		return nil, errors.Errorf("failed to enter namespace: %s", err)
+		return nil, err
 	}
+	defer func() { _ = currentNs.Close() }()
 
-	pciDevicePath := filepath.Join("/sys/bus/pci/devices", pciAddress)
-	netDir, err := findNetDir(pciDevicePath)
-	if err != nil {
-		return nil, errors.Errorf("no net directory under pci device %s: %q", pciAddress, err)
-	}
+	var link netlink.Link
+	err = nshandle.RunIn(currentNs, ns, func() error {
+		var netDir string
+		pciDevicePath := filepath.Join("/sys/bus/pci/devices", pciAddress)
+		netDir, err = findNetDir(pciDevicePath)
+		if err != nil {
+			return errors.Errorf("no net directory under pci device %s: %q", pciAddress, err)
+		}
 
-	fInfos, err := ioutil.ReadDir(netDir)
-	if err != nil {
-		return nil, errors.Errorf("failed to read net directory %s: %q", netDir, err)
-	}
+		var fInfos []fs.FileInfo
+		fInfos, err = ioutil.ReadDir(netDir)
+		if err != nil {
+			return errors.Errorf("failed to read net directory %s: %q", netDir, err)
+		}
 
-	names := make([]string, 0)
-	for _, f := range fInfos {
-		names = append(names, f.Name())
-	}
+		names := make([]string, 0)
+		for _, f := range fInfos {
+			names = append(names, f.Name())
+		}
 
-	if len(names) == 0 {
-		return nil, errors.Errorf("no links with PCI address %s found", pciAddress)
-	}
+		if len(names) == 0 {
+			return errors.Errorf("no links with PCI address %s found", pciAddress)
+		}
 
-	link, err := netlink.LinkByName(names[0])
-	if err != nil {
-		return nil, errors.Errorf("error getting host device with PCI address %s", pciAddress)
-	}
+		link, err = netlink.LinkByName(names[0])
+		if err != nil {
+			return errors.Errorf("error getting host device with PCI address %s", pciAddress)
+		}
+		return nil
+	})
 
-	return link, nil
+	return link, err
 }
 
 func findNetDir(basePath string) (string, error) {
@@ -272,13 +268,13 @@ func findNetDir(basePath string) (string, error) {
 
 func searchByName(ns netns.NsHandle, name, pciAddress string) (netlink.Link, error) {
 	// execute in context of the pod's namespace
-	err := netns.Set(ns)
+	handle, err := netlink.NewHandleAt(ns)
 	if err != nil {
-		return nil, errors.Errorf("failed to switch to namespace: %s", err)
+		return nil, errors.Errorf("failed to create netlink handler: %s", err)
 	}
 
 	// get link
-	link, err := netlink.LinkByName(name)
+	link, err := handle.LinkByName(name)
 	if err != nil {
 		return nil, errors.Errorf("failed to get link with name %s", name)
 	}

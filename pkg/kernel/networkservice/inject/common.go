@@ -37,42 +37,59 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
-func moveInterfaceToAnotherNamespace(ifName string, curNetNS, fromNetNS, toNetNS netns.NsHandle) error {
-	return nshandle.RunIn(curNetNS, fromNetNS, func() error {
-		link, err := netlink.LinkByName(ifName)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get net interface: %v", ifName)
-		}
+func moveInterfaceToAnotherNamespace(ifName string, fromNetNS, toNetNS netns.NsHandle) error {
+	handle, err := netlink.NewHandleAt(fromNetNS)
+	if err != nil {
+		return errors.Wrap(err, "failed to create netlink fromNetNS handle")
+	}
 
-		if err := netlink.LinkSetNsFd(link, int(toNetNS)); err != nil {
-			return errors.Wrapf(err, "failed to move net interface to net NS: %v %v", ifName, toNetNS)
-		}
+	link, err := handle.LinkByName(ifName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get net interface: %v", ifName)
+	}
 
-		return nil
-	})
+	if err := handle.LinkSetNsFd(link, int(toNetNS)); err != nil {
+		return errors.Wrapf(err, "failed to move net interface to net NS: %v %v", ifName, toNetNS)
+	}
+	return nil
 }
 
-func renameInterface(origIfName, desiredIfName string, curNetNS, targetNetNS netns.NsHandle) error {
-	return nshandle.RunIn(curNetNS, targetNetNS, func() error {
-		link, err := netlink.LinkByName(origIfName)
-		if err != nil {
-			return errors.Wrapf(err, "failed to get net interface: %v", origIfName)
-		}
+func renameInterface(origIfName, desiredIfName string, targetNetNS netns.NsHandle) error {
+	handle, err := netlink.NewHandleAt(targetNetNS)
+	if err != nil {
+		return errors.Wrap(err, "failed to create netlink targetNetNS handle")
+	}
 
-		if err = netlink.LinkSetDown(link); err != nil {
-			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
-		}
+	link, err := handle.LinkByName(origIfName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get net interface: %v", origIfName)
+	}
 
-		if err = netlink.LinkSetName(link, desiredIfName); err != nil {
-			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
-		}
+	if err = handle.LinkSetDown(link); err != nil {
+		return errors.Wrapf(err, "failed to down net interface: %v -> %v", origIfName, desiredIfName)
+	}
 
-		if err = netlink.LinkSetUp(link); err != nil {
-			return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
-		}
+	if err = handle.LinkSetName(link, desiredIfName); err != nil {
+		return errors.Wrapf(err, "failed to rename net interface: %v -> %v", origIfName, desiredIfName)
+	}
+	return nil
+}
 
-		return nil
-	})
+func upInterface(ifName string, targetNetNS netns.NsHandle) error {
+	handle, err := netlink.NewHandleAt(targetNetNS)
+	if err != nil {
+		return errors.Wrap(err, "failed to create netlink NS handle")
+	}
+
+	link, err := handle.LinkByName(ifName)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get net interface: %v", ifName)
+	}
+
+	if err = handle.LinkSetUp(link); err != nil {
+		return errors.Wrapf(err, "failed to up net interface: %v", ifName)
+	}
+	return nil
 }
 
 func move(ctx context.Context, conn *networkservice.Connection, vfRefCountMap map[string]int, vfRefCountMutex sync.Locker, isClient, isMoveBack bool) error {
@@ -119,7 +136,12 @@ func move(ctx context.Context, conn *networkservice.Connection, vfRefCountMap ma
 	ifName := mech.GetInterfaceName()
 	if !isMoveBack {
 		err = moveToContNetNS(vfConfig, vfRefCountMap, vfRefKey, ifName, hostNetNS, contNetNS)
-		vfConfig.ContNetNS = contNetNS
+		if err != nil {
+			// If we got an error, try to move back the vf to the host namespace
+			_ = moveToHostNetNS(vfConfig, vfRefCountMap, vfRefKey, ifName, hostNetNS, contNetNS)
+		} else {
+			vfConfig.ContNetNS = contNetNS
+		}
 	} else {
 		err = moveToHostNetNS(vfConfig, vfRefCountMap, vfRefKey, ifName, hostNetNS, contNetNS)
 	}
@@ -146,12 +168,15 @@ func moveToContNetNS(vfConfig *vfconfig.VFConfig, vfRefCountMap map[string]int, 
 		return
 	}
 	if vfConfig != nil && vfConfig.VFInterfaceName != ifName {
-		err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, hostNetNS, hostNetNS, contNetNS)
+		err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, hostNetNS, contNetNS)
 		if err == nil {
-			err = renameInterface(vfConfig.VFInterfaceName, ifName, hostNetNS, contNetNS)
+			err = renameInterface(vfConfig.VFInterfaceName, ifName, contNetNS)
+			if err == nil {
+				err = upInterface(ifName, contNetNS)
+			}
 		}
 	} else {
-		err = moveInterfaceToAnotherNamespace(ifName, hostNetNS, hostNetNS, contNetNS)
+		err = moveInterfaceToAnotherNamespace(ifName, hostNetNS, contNetNS)
 	}
 	return err
 }
@@ -178,9 +203,9 @@ func moveToHostNetNS(vfConfig *vfconfig.VFConfig, vfRefCountMap map[string]int, 
 				}
 				return nil
 			}
-			err := renameInterface(ifName, vfConfig.VFInterfaceName, hostNetNS, contNetNS)
+			err := renameInterface(ifName, vfConfig.VFInterfaceName, contNetNS)
 			if err == nil {
-				err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, hostNetNS, contNetNS, hostNetNS)
+				err = moveInterfaceToAnotherNamespace(vfConfig.VFInterfaceName, contNetNS, hostNetNS)
 			}
 			return err
 		}
@@ -188,7 +213,7 @@ func moveToHostNetNS(vfConfig *vfconfig.VFConfig, vfRefCountMap map[string]int, 
 		if link != nil {
 			return nil
 		}
-		return moveInterfaceToAnotherNamespace(ifName, hostNetNS, contNetNS, hostNetNS)
+		return moveInterfaceToAnotherNamespace(ifName, contNetNS, hostNetNS)
 	}
 	return nil
 }
