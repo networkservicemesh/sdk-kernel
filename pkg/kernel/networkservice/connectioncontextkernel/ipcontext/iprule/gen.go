@@ -1,5 +1,7 @@
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2023 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +25,12 @@ import (
 )
 
 //go:generate go-syncmap -output table_map.gen.go -type Map<string,policies>
+//go:generate go-syncmap -output netns_rtable_conn_map.gen.go -type NetnsRTableNextIDToConnMap<NetnsRTableNextID,string>
 
 type policies map[int]*networkservice.PolicyRoute
 
 // Map - sync.Map with key == string (connID) and value == policies
 type Map sync.Map
+
+// NetnsRTableNextIDToConnMap - sync.Map with key NetnsRTableNextID value of string (connID)
+type NetnsRTableNextIDToConnMap sync.Map
