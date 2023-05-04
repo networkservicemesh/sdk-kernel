@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2023 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -25,6 +25,7 @@ package iprule
 
 import (
 	"context"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -34,12 +35,15 @@ import (
 )
 
 type ipruleServer struct {
-	tables Map
+	tables      Map
+	tableIDLock sync.Locker
 }
 
 // NewServer creates a new server chain element setting ip rules
 func NewServer() networkservice.NetworkServiceServer {
-	return &ipruleServer{}
+	return &ipruleServer{
+		tableIDLock: &sync.Mutex{},
+	}
 }
 
 func (i *ipruleServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
@@ -55,7 +59,7 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 
-	if err := create(ctx, conn, &i.tables); err != nil {
+	if err := create(ctx, conn, &i.tables, i.tableIDLock); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 

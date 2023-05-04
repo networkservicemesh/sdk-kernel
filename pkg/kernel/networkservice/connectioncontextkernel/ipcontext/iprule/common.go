@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
+// Copyright (c) 2023 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +27,7 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -40,7 +43,7 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
-func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) error {
+func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map, tIDLock sync.Locker) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		// Construct the netlink handle for the target namespace for this kernel interface
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
@@ -75,28 +78,37 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map)
 			tableIDs.Store(conn.GetId(), ps)
 		}
 		// Add new policies
+		tIDLock.Lock()
+		defer tIDLock.Unlock()
 		for _, policy := range toAdd {
-			tableID, err := getFreeTableID(ctx, netlinkHandle)
-			if err != nil {
+			if err := addPolicy(ctx, netlinkHandle, policy, l, ps, tableIDs, conn); err != nil {
 				return err
 			}
-			// If policy doesn't contain any route - add default
-			if len(policy.Routes) == 0 {
-				policy.Routes = append(policy.Routes, defaultRoute())
-			}
-
-			for _, route := range policy.Routes {
-				if err := routeAdd(ctx, netlinkHandle, l, route, tableID); err != nil {
-					return err
-				}
-			}
-			if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
-				return err
-			}
-			ps[tableID] = policy
-			tableIDs.Store(conn.GetId(), ps)
 		}
 	}
+	return nil
+}
+
+func addPolicy(ctx context.Context, netlinkHandle *netlink.Handle, policy *networkservice.PolicyRoute, l netlink.Link, ps policies, tableIDs *Map, conn *networkservice.Connection) error {
+	tableID, err := getFreeTableID(ctx, netlinkHandle)
+	if err != nil {
+		return err
+	}
+	// If policy doesn't contain any route - add default
+	if len(policy.Routes) == 0 {
+		policy.Routes = append(policy.Routes, defaultRoute())
+	}
+
+	for _, route := range policy.Routes {
+		if err := routeAdd(ctx, netlinkHandle, l, route, tableID); err != nil {
+			return err
+		}
+	}
+	if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
+		return err
+	}
+	ps[tableID] = policy
+	tableIDs.Store(conn.GetId(), ps)
 	return nil
 }
 
