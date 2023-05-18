@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Cisco and/or its affiliates.
+// Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -19,8 +19,9 @@ package heal
 
 import (
 	"context"
-	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/go-ping/ping"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -33,11 +34,45 @@ const (
 	packetCount    = 4
 )
 
-// KernelLivenessCheck is an implementation of heal.LivenessCheck. It sends ICMP
-// ping and checks reply. Returns false if didn't get reply.
+type options struct {
+	pingerFactory PingerFactory
+}
+
+// Option is an option pattern for LivelinessChecker
+type Option func(o *options)
+
+// WithPingerFactory - sets any custom pinger factory
+func WithPingerFactory(pf PingerFactory) Option {
+	return func(o *options) {
+		o.pingerFactory = pf
+	}
+}
+
+// KernelLivenessCheck is an implementation of heal.LivenessCheck
 func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Connection) bool {
+	return KernelLivenessCheckWithOptions(deadlineCtx, conn)
+}
+
+// KernelLivenessCheckWithOptions is an implementation with options of heal.LivenessCheck. It sends ICMP
+// ping and checks reply. Returns false if didn't get reply.
+func KernelLivenessCheckWithOptions(deadlineCtx context.Context, conn *networkservice.Connection, opts ...Option) bool {
+	// Apply options
+	o := &options{
+		pingerFactory: &defaultPingerFactory{},
+	}
+	for _, opt := range opts {
+		opt(o)
+	}
+	var pingerFactory = o.pingerFactory
+
 	if mechanism := conn.GetMechanism().GetType(); mechanism != kernel.MECHANISM {
 		log.FromContext(deadlineCtx).Warnf("ping is not supported for mechanism %v", mechanism)
+		return true
+	}
+	ipContext := conn.GetContext().GetIpContext()
+	combinationCount := len(ipContext.GetDstIpAddrs()) * len(ipContext.GetSrcIpAddrs())
+	if combinationCount == 0 {
+		log.FromContext(deadlineCtx).Debug("No IP address")
 		return true
 	}
 
@@ -45,46 +80,97 @@ func KernelLivenessCheck(deadlineCtx context.Context, conn *networkservice.Conne
 	if !ok {
 		deadline = time.Now().Add(defaultTimeout)
 	}
+	timeout := time.Until(deadline)
 
-	addrCount := len(conn.GetContext().GetIpContext().GetDstIpAddrs())
-	if addrCount == 0 {
-		log.FromContext(deadlineCtx).Debug("No dst IP address")
-		return true
-	}
-	timeout := time.Until(deadline) / time.Duration(addrCount)
-
-	var pinger *ping.Pinger
-
-	for _, cidr := range conn.GetContext().GetIpContext().GetDstIpAddrs() {
-		addr, _, err := net.ParseCIDR(cidr)
-		if err != nil {
-			log.FromContext(deadlineCtx).Errorf("ParseCIDR failed: %s", err.Error())
-			return false
-		}
-
-		ipAddr := &net.IPAddr{IP: addr}
-		if pinger == nil {
-			pinger, err = ping.NewPinger(addr.String())
-			if err != nil {
-				log.FromContext(deadlineCtx).Errorf("Failed to create pinger: %s", err.Error())
-				return false
+	// Start ping for all Src/DstIPs combination
+	responseCh := make(chan error, combinationCount)
+	defer close(responseCh)
+	for _, srcIPNet := range ipContext.GetSrcIPNets() {
+		for _, dstIPNet := range ipContext.GetDstIPNets() {
+			// Skip if IPs don't belong to the same family
+			if (srcIPNet.IP.To4() != nil) != (dstIPNet.IP.To4() != nil) {
+				responseCh <- nil
+				continue
 			}
-			pinger.SetPrivileged(true)
-			pinger.Interval = timeout / packetCount
-			pinger.Timeout = timeout
-			pinger.Count = packetCount
-		} else {
-			pinger.SetIPAddr(ipAddr)
-		}
-		err = pinger.Run()
-		if err != nil {
-			log.FromContext(deadlineCtx).Errorf("Ping failed: %s", err.Error())
-			return false
-		}
 
-		if pinger.Statistics().PacketsRecv == 0 {
-			return false
+			go func(srcIP, dstIP string) {
+				logger := log.FromContext(deadlineCtx).WithField("srcIP", srcIP).WithField("dstIP", dstIP)
+				pinger := pingerFactory.CreatePinger(srcIP, dstIP, timeout, packetCount)
+
+				err := pinger.Run()
+				if err != nil {
+					logger.Errorf("Ping failed: %s", err.Error())
+					responseCh <- err
+					return
+				}
+
+				if pinger.GetReceivedPackets() == 0 {
+					err = errors.New("No packets received")
+					logger.Errorf(err.Error())
+					responseCh <- err
+					return
+				}
+				responseCh <- nil
+			}(srcIPNet.IP.String(), dstIPNet.IP.String())
 		}
 	}
-	return true
+
+	// Waiting for all ping results. If at least one fails - return false
+	return waitForResponses(responseCh)
+}
+
+func waitForResponses(responseCh <-chan error) bool {
+	respCount := cap(responseCh)
+	success := true
+	for {
+		resp, ok := <-responseCh
+		if !ok {
+			return false
+		}
+		if resp != nil {
+			success = false
+		}
+		respCount--
+		if respCount == 0 {
+			return success
+		}
+	}
+}
+
+// PingerFactory - factory interface for creating pingers
+type PingerFactory interface {
+	CreatePinger(srcIP, dstIP string, timeout time.Duration, count int) Pinger
+}
+
+// Pinger - pinger interface
+type Pinger interface {
+	Run() error
+	GetReceivedPackets() int
+}
+
+type defaultPingerFactory struct{}
+
+func (p *defaultPingerFactory) CreatePinger(srcIP, dstIP string, timeout time.Duration, count int) Pinger {
+	pi := ping.New(dstIP)
+	pi.SetPrivileged(true)
+	pi.Source = srcIP
+	pi.Timeout = timeout
+	pi.Count = count
+	if count != 0 {
+		pi.Interval = timeout / time.Duration(count)
+	}
+
+	return &defaultPinger{pinger: pi}
+}
+
+type defaultPinger struct {
+	pinger *ping.Pinger
+}
+
+func (p *defaultPinger) Run() error {
+	return p.pinger.Run()
+}
+
+func (p *defaultPinger) GetReceivedPackets() int {
+	return p.pinger.Statistics().PacketsRecv
 }
