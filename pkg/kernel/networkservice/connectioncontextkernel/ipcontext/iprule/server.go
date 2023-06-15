@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2023 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -35,6 +35,10 @@ import (
 
 type ipruleServer struct {
 	tables Map
+	// Protecting route and rule setting with this sync.Map
+	// The next table ID is calculated based on a dump
+	// other connection from same client can add new table in parallel
+	nsRTableNextIDToConnID NetnsRTableNextIDToConnMap
 }
 
 // NewServer creates a new server chain element setting ip rules
@@ -55,7 +59,7 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 
-	if err := create(ctx, conn, &i.tables); err != nil {
+	if err := create(ctx, conn, &i.tables, &i.nsRTableNextIDToConnID); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 
@@ -70,6 +74,6 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (i *ipruleServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	_ = del(ctx, conn, &i.tables)
+	_ = del(ctx, conn, &i.tables, &i.nsRTableNextIDToConnID)
 	return next.Server(ctx).Close(ctx, conn)
 }
