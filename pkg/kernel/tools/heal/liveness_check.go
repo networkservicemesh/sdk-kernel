@@ -152,7 +152,6 @@ type defaultPingerFactory struct{}
 
 func (p *defaultPingerFactory) CreatePinger(srcIP, dstIP string, timeout time.Duration, count int) Pinger {
 	pi := ping.New(dstIP)
-	pi.SetPrivileged(true)
 	pi.Source = srcIP
 	pi.Timeout = timeout
 	pi.Count = count
