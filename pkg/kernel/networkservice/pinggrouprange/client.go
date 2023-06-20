@@ -24,6 +24,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
@@ -41,15 +42,16 @@ func (p *pinggrouprangeClient) Request(ctx context.Context, request *networkserv
 	if err != nil {
 		return nil, err
 	}
+	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
+		if err := applyPingGroupRange(ctx, mechanism); err != nil {
+			closeCtx, cancelClose := postponeCtxFunc()
+			defer cancelClose()
 
-	if err := set(ctx, conn); err != nil {
-		closeCtx, cancelClose := postponeCtxFunc()
-		defer cancelClose()
-
-		if _, closeErr := p.Close(closeCtx, conn, opts...); closeErr != nil {
-			err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+			if _, closeErr := p.Close(closeCtx, conn, opts...); closeErr != nil {
+				err = errors.Wrapf(err, "connection closed with error: %s", closeErr.Error())
+			}
+			return nil, err
 		}
-		return nil, err
 	}
 	return conn, nil
 }

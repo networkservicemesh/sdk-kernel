@@ -23,7 +23,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netns"
 
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -32,30 +31,30 @@ import (
 )
 
 // See https://github.com/go-ping/ping#linux
-const groupRange = "0 2147483647"
+const (
+	pingGroupRangeFilename = "/proc/sys/net/ipv4/ping_group_range"
+	groupRange             = "0 2147483647"
+)
 
-func set(ctx context.Context, conn *networkservice.Connection) error {
-	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
-		forwarderNetNS, err := nshandle.Current()
-		if err != nil {
-			return err
-		}
-		defer func() { _ = forwarderNetNS.Close() }()
-
-		var targetNetNS netns.NsHandle
-		targetNetNS, err = nshandle.FromURL(mechanism.GetNetNSURL())
-		if err != nil {
-			return err
-		}
-		defer func() { _ = targetNetNS.Close() }()
-
-		pingGroupRangeFilename := "/proc/sys/net/ipv4/ping_group_range"
-		if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
-			return ioutil.WriteFile(pingGroupRangeFilename, []byte(groupRange), 0o600)
-		}); err != nil {
-			return errors.Wrapf(err, "failed to set %s = %s", pingGroupRangeFilename, groupRange)
-		}
-		log.FromContext(ctx).Infof("%s was set to %s", pingGroupRangeFilename, groupRange)
+func applyPingGroupRange(ctx context.Context, mech *kernel.Mechanism) error {
+	forwarderNetNS, err := nshandle.Current()
+	if err != nil {
+		return err
 	}
+	defer func() { _ = forwarderNetNS.Close() }()
+
+	var targetNetNS netns.NsHandle
+	targetNetNS, err = nshandle.FromURL(mech.GetNetNSURL())
+	if err != nil {
+		return err
+	}
+	defer func() { _ = targetNetNS.Close() }()
+
+	if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
+		return ioutil.WriteFile(pingGroupRangeFilename, []byte(groupRange), 0o600)
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set %s = %s", pingGroupRangeFilename, groupRange)
+	}
+	log.FromContext(ctx).Infof("%s was set to %s", pingGroupRangeFilename, groupRange)
 	return nil
 }
