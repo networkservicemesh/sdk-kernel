@@ -26,6 +26,7 @@ package iprule
 import (
 	"context"
 
+	"github.com/edwarnicke/genericsync"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
@@ -35,7 +36,7 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
-func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, tableIDs *Map) error {
+func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies]) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		_, ok := tableIDs.Load(conn.GetId())
 		if ok {
