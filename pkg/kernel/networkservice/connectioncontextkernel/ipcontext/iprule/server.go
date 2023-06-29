@@ -26,6 +26,7 @@ package iprule
 import (
 	"context"
 
+	"github.com/edwarnicke/genericsync"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
@@ -34,11 +35,11 @@ import (
 )
 
 type ipruleServer struct {
-	tables Map
+	tables genericsync.Map[string, policies]
 	// Protecting route and rule setting with this sync.Map
 	// The next table ID is calculated based on a dump
 	// other connection from same client can add new table in parallel
-	nsRTableNextIDToConnID NetnsRTableNextIDToConnMap
+	nsRTableNextIDToConnID genericsync.Map[NetnsRTableNextID, string]
 }
 
 // NewServer creates a new server chain element setting ip rules

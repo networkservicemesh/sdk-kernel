@@ -31,6 +31,7 @@ import (
 
 	"golang.org/x/sys/unix"
 
+	"github.com/edwarnicke/genericsync"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
@@ -42,7 +43,9 @@ import (
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
 )
 
-func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map, nsRTableNextIDToConnID *NetnsRTableNextIDToConnMap) error {
+type policies map[int]*networkservice.PolicyRoute
+
+func create(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		// Construct the netlink handle for the target namespace for this kernel interface
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
@@ -102,7 +105,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 	return nil
 }
 
-func addPolicy(ctx context.Context, netlinkHandle *netlink.Handle, policy *networkservice.PolicyRoute, l netlink.Link, ps policies, tableIDs *Map, tableID int, connID string, nsrtid NetnsRTableNextID, nsRTableNextIDToConnID *NetnsRTableNextIDToConnMap) error {
+func addPolicy(ctx context.Context, netlinkHandle *netlink.Handle, policy *networkservice.PolicyRoute, l netlink.Link, ps policies, tableIDs *genericsync.Map[string, policies], tableID int, connID string, nsrtid NetnsRTableNextID, nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]) error {
 	// release the lock if something fails
 	defer nsRTableNextIDToConnID.Delete(nsrtid)
 	// If policy doesn't contain any route - add default
@@ -265,7 +268,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route
 	return nil
 }
 
-func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map, nsRTableNextIDToConnID *NetnsRTableNextIDToConnMap) error {
+func del(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
