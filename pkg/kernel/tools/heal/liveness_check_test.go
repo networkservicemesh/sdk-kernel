@@ -135,7 +135,7 @@ type testPingerFactory struct {
 	pingersCount int32
 }
 
-func (p *testPingerFactory) CreatePinger(srcIP, dstIP string, timeout time.Duration, count int) heal.Pinger {
+func (p *testPingerFactory) CreatePinger(_, dstIP string, _ time.Duration, count int) heal.Pinger {
 	atomic.AddInt32(&p.pingersCount, 1)
 	return &testPinger{
 		dstIP: dstIP,

@@ -197,7 +197,7 @@ func FindHostDevice(pciAddress, name string, namespaces ...netns.NsHandle) (Link
 	return nil, errors.Errorf("failed to obtain netlink link matching criteria: name=%s or pciAddress=%s", name, pciAddress)
 }
 
-func searchByPCIAddress(ns netns.NsHandle, name, pciAddress string) (netlink.Link, error) {
+func searchByPCIAddress(ns netns.NsHandle, _, pciAddress string) (netlink.Link, error) {
 	// execute in context of the pod's namespace
 	currentNs, err := nshandle.Current()
 	if err != nil {
@@ -266,7 +266,7 @@ func findNetDir(basePath string) (string, error) {
 	return "", errors.Errorf("failed to find net directory")
 }
 
-func searchByName(ns netns.NsHandle, name, pciAddress string) (netlink.Link, error) {
+func searchByName(ns netns.NsHandle, name, _ string) (netlink.Link, error) {
 	// execute in context of the pod's namespace
 	handle, err := netlink.NewHandleAt(ns)
 	if err != nil {

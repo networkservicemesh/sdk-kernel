@@ -26,6 +26,7 @@ package iprule
 import (
 	"context"
 
+	"github.com/edwarnicke/genericsync"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
@@ -33,17 +34,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+type policies map[int]*networkservice.PolicyRoute
+
 type ipruleServer struct {
-	tables Map
+	tables *genericsync.Map[string, policies]
 	// Protecting route and rule setting with this sync.Map
 	// The next table ID is calculated based on a dump
 	// other connection from same client can add new table in parallel
-	nsRTableNextIDToConnID NetnsRTableNextIDToConnMap
+	nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]
 }
 
 // NewServer creates a new server chain element setting ip rules
 func NewServer() networkservice.NetworkServiceServer {
-	return &ipruleServer{}
+	return &ipruleServer{
+		tables:                 new(genericsync.Map[string, policies]),
+		nsRTableNextIDToConnID: new(genericsync.Map[NetnsRTableNextID, string]),
+	}
 }
 
 func (i *ipruleServer) Request(ctx context.Context, request *networkservice.NetworkServiceRequest) (*networkservice.Connection, error) {
@@ -54,12 +60,12 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 
-	err = recoverTableIDs(ctx, conn, &i.tables)
+	err = recoverTableIDs(ctx, conn, i.tables)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := create(ctx, conn, &i.tables, &i.nsRTableNextIDToConnID); err != nil {
+	if err := create(ctx, conn, i.tables, i.nsRTableNextIDToConnID); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()
 		defer cancelClose()
 
@@ -74,6 +80,6 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (i *ipruleServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	_ = del(ctx, conn, &i.tables, &i.nsRTableNextIDToConnID)
+	_ = del(ctx, conn, i.tables, i.nsRTableNextIDToConnID)
 	return next.Server(ctx).Close(ctx, conn)
 }

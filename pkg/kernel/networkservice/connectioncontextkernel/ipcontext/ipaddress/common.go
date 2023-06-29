@@ -103,10 +103,11 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		defer func() {
 			close(done)
 			// `ch` should be fully read after the `done` close to prevent goroutine leak in `netlink.AddrSubscribeWithOptions`
-			go func() {
-				for range ch {
-				}
-			}()
+			// todo: ?
+			// go func() {
+			// 	for range ch {
+			// 	}
+			// }()
 		}()
 
 		// Get IP addresses to add and to remove
