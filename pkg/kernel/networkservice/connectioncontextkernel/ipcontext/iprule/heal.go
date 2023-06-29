@@ -52,11 +52,18 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 		}
 		defer netlinkHandle.Close()
 
+		ifName := mechanism.GetInterfaceName()
+		l, err := netlinkHandle.LinkByName(ifName)
+		if err != nil {
+			return errors.Wrapf(err, "failed to find link %s", ifName)
+		}
+
 		podRules, err := netlinkHandle.RuleList(netlink.FAMILY_ALL)
 		if err != nil {
 			return errors.Wrap(err, "failed to get list of rules")
 		}
 
+		tableIDtoPolicyMap := make(map[int]*networkservice.PolicyRoute)
 		// try to find the corresponding missing policies in the network namespace of the pod
 		for _, policy := range conn.Context.IpContext.Policies {
 			policyRule, err := policyToRule(policy)
@@ -65,18 +72,40 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 			}
 			for i := range podRules {
 				if ruleEquals(&podRules[i], policyRule) {
+					tableIDtoPolicyMap[podRules[i].Table] = policy
 					log.FromContext(ctx).
 						WithField("From", policy.From).
 						WithField("IPProto", policy.Proto).
 						WithField("DstPort", policy.DstPort).
 						WithField("SrcPort", policy.SrcPort).
 						WithField("Table", podRules[i].Table).Debug("policy recovered")
-					err := delRule(ctx, netlinkHandle, policy, podRules[i].Table)
-					if err != nil {
-						return err
-					}
 					break
 				}
+			}
+		}
+
+		return deleteRemainders(ctx, netlinkHandle, tableIDtoPolicyMap, podRules, l)
+	}
+	return nil
+}
+
+func deleteRemainders(ctx context.Context, netlinkHandle *netlink.Handle, tableIDtoPolicyMap map[int]*networkservice.PolicyRoute, podRules []netlink.Rule, l netlink.Link) error {
+	for tableID, policy := range tableIDtoPolicyMap {
+		usage := 0
+		for i := range podRules {
+			if podRules[i].Table == tableID {
+				usage++
+			}
+		}
+		if usage == 1 {
+			err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := delRuleOnly(ctx, netlinkHandle, policy)
+			if err != nil {
+				return err
 			}
 		}
 	}

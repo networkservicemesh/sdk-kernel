@@ -40,6 +40,7 @@ import (
 	"github.com/networkservicemesh/sdk/pkg/tools/log"
 
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
 func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map, nsRTableNextIDToConnID *NetnsRTableNextIDToConnMap) error {
@@ -70,14 +71,20 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 
 		// Remove no longer existing policies
 		for tableID, policy := range toRemove {
-			if errRule := delRule(ctx, netlinkHandle, policy, tableID); errRule != nil {
+			if errRule := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); errRule != nil {
 				return errRule
 			}
 			delete(ps, tableID)
 			tableIDs.Store(connID, ps)
 		}
+
+		// Get netns for key to namespace to routing tableID map
+		netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
+		if err != nil {
+			return err
+		}
+
 		// Add new policies
-		netNSInode := mechanism.GetNetNSInode()
 		for _, policy := range toAdd {
 			var tableID int
 			var nsrtid *NetnsRTableNextID
@@ -87,8 +94,12 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *Map,
 				if err != nil {
 					return err
 				}
-				nsrtid = NewNetnsRTableNextID(netNSInode, tableID)
+				nsrtid = NewNetnsRTableNextID(netNS.UniqueId(), tableID)
 				storedConnID, _ := nsRTableNextIDToConnID.LoadOrStore(*nsrtid, connID)
+				log.FromContext(ctx).
+					WithField("nsrtid", *nsrtid).
+					WithField("ConnID", storedConnID).
+					Debug("storedTableID")
 				if connID == storedConnID {
 					// No other connection adding policy using this free routing table ID
 					break
@@ -272,15 +283,23 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map, ns
 			return err
 		}
 		defer netlinkHandle.Close()
+		ifName := mechanism.GetInterfaceName()
+		l, err := netlinkHandle.LinkByName(ifName)
+		if err != nil {
+			return errors.Wrapf(err, "failed to find link %s", ifName)
+		}
 		ps, ok := tableIDs.LoadAndDelete(conn.GetId())
 		if ok {
-			netNSInode := mechanism.GetNetNSInode()
+			netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
+			if err != nil {
+				return err
+			}
 			for tableID := range ps {
-				nsrtid := NewNetnsRTableNextID(netNSInode, tableID)
+				nsrtid := NewNetnsRTableNextID(netNS.UniqueId(), tableID)
 				nsRTableNextIDToConnID.Delete(*nsrtid)
 			}
 			for tableID, policy := range ps {
-				if err := delRule(ctx, netlinkHandle, policy, tableID); err != nil {
+				if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); err != nil {
 					return err
 				}
 			}
@@ -289,16 +308,11 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *Map, ns
 	return nil
 }
 
-func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID int) error {
+func delRuleOnly(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute) error {
 	rule, err := policyToRule(policy)
 	if err != nil {
 		return err
 	}
-
-	if err := flushTable(ctx, handle, tableID); err != nil {
-		return err
-	}
-
 	now := time.Now()
 	if err := handle.RuleDel(rule); err != nil {
 		log.FromContext(ctx).
@@ -320,10 +334,17 @@ func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice
 	return nil
 }
 
-func flushTable(ctx context.Context, handle *netlink.Handle, tableID int) error {
+func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID, linkIndex int) error {
+	if err := flushTable(ctx, handle, tableID, linkIndex); err != nil {
+		return err
+	}
+	return delRuleOnly(ctx, handle, policy)
+}
+func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex int) error {
 	routes, err := handle.RouteListFiltered(netlink.FAMILY_ALL,
 		&netlink.Route{
-			Table: tableID,
+			Table:     tableID,
+			LinkIndex: linkIndex,
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
@@ -334,6 +355,9 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID int) error 
 		if err != nil {
 			return errors.Wrapf(err, "failed to delete route")
 		}
+		log.FromContext(ctx).
+			WithField("Route", &routes[i]).
+			WithField("netlink", "RouteDel").Debug("completed")
 	}
 	log.FromContext(ctx).
 		WithField("tableID", tableID).
