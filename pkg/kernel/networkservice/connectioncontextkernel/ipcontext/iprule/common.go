@@ -58,31 +58,34 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 		if err != nil {
 			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
+
+		// Get netns for key to namespace to routing tableID map
+		netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
+		if err != nil {
+			return err
+		}
+
 		connID := conn.GetId()
 		ps, ok := tableIDs.Load(connID)
 		if !ok {
 			if len(conn.Context.IpContext.Policies) == 0 {
 				return nil
 			}
-			ps = make(map[int]*networkservice.PolicyRoute)
+			policyMap := make(map[int]*networkservice.PolicyRoute)
+			ps = policies{policymap: policyMap,
+				ns: netNS.UniqueId()}
 			tableIDs.Store(connID, ps)
 		}
 		// Get policies to add and to remove
-		toAdd, toRemove := getPolicyDifferences(ps, conn.Context.IpContext.Policies)
+		toAdd, toRemove := getPolicyDifferences(ps.policymap, conn.Context.IpContext.Policies)
 
 		// Remove no longer existing policies
 		for tableID, policy := range toRemove {
 			if errRule := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); errRule != nil {
 				return errRule
 			}
-			delete(ps, tableID)
+			delete(ps.policymap, tableID)
 			tableIDs.Store(connID, ps)
-		}
-
-		// Get netns for key to namespace to routing tableID map
-		netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
-		if err != nil {
-			return err
 		}
 
 		// Add new policies
@@ -130,7 +133,7 @@ func addPolicy(ctx context.Context, netlinkHandle *netlink.Handle, policy *netwo
 	if err := ruleAdd(ctx, netlinkHandle, policy, tableID); err != nil {
 		return err
 	}
-	ps[tableID] = policy
+	ps.policymap[tableID] = policy
 	tableIDs.Store(connID, ps)
 	return nil
 }
@@ -295,13 +298,23 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *generic
 			if err != nil {
 				return err
 			}
-			for tableID := range ps {
+
+			for tableID, policy := range ps.policymap {
 				nsrtid := NewNetnsRTableNextID(netNS.UniqueId(), tableID)
 				nsRTableNextIDToConnID.Delete(*nsrtid)
-			}
-			for tableID, policy := range ps {
-				if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); err != nil {
-					return err
+				origTID := tableID
+				delOk := true
+				tableIDs.Range(func(key string, value policies) bool {
+					if _, ok := value.policymap[origTID]; ok && value.ns == netNS.UniqueId() {
+						delOk = false
+						return false
+					}
+					return true
+				})
+				if delOk {
+					if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -381,6 +394,18 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 	ids[0] = 0
 	for i := 0; i < len(routes); i++ {
 		ids[routes[i].Table] = routes[i].Table
+	}
+
+	rules, err := handle.RuleListFiltered(netlink.FAMILY_ALL,
+		&netlink.Rule{
+			Table: unix.RT_TABLE_UNSPEC,
+		},
+		netlink.RT_FILTER_TABLE)
+	if err != nil {
+		return 0, errors.Wrapf(err, "getFreeTableID: failed to list rules")
+	}
+	for i := 0; i < len(rules); i++ {
+		ids[rules[i].Table] = rules[i].Table
 	}
 
 	// Find first missing table id

@@ -34,7 +34,10 @@ import (
 	"github.com/pkg/errors"
 )
 
-type policies map[int]*networkservice.PolicyRoute
+type policies struct {
+	ns        string
+	policymap map[int]*networkservice.PolicyRoute
+}
 
 type ipruleServer struct {
 	tables *genericsync.Map[string, policies]
