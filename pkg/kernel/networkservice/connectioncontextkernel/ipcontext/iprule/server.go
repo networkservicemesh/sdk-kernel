@@ -19,7 +19,6 @@
 // limitations under the License.
 
 //go:build linux
-// +build linux
 
 package iprule
 
@@ -41,14 +40,14 @@ type ipruleServer struct {
 	// Protecting route and rule setting with this sync.Map
 	// The next table ID is calculated based on a dump
 	// other connection from same client can add new table in parallel
-	nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]
+	nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]
 }
 
 // NewServer creates a new server chain element setting ip rules
 func NewServer() networkservice.NetworkServiceServer {
 	return &ipruleServer{
 		tables:                 new(genericsync.Map[string, policies]),
-		nsRTableNextIDToConnID: new(genericsync.Map[NetnsRTableNextID, string]),
+		nsRTableNextIDToConnID: new(genericsync.Map[netnsRTableNextID, string]),
 	}
 }
 
@@ -60,7 +59,7 @@ func (i *ipruleServer) Request(ctx context.Context, request *networkservice.Netw
 		return nil, err
 	}
 
-	err = recoverTableIDs(ctx, conn, i.tables)
+	err = recoverTableIDs(ctx, conn, i.tables, i.nsRTableNextIDToConnID)
 	if err != nil {
 		return nil, err
 	}

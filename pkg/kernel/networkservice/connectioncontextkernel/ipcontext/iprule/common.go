@@ -19,13 +19,13 @@
 // limitations under the License.
 
 //go:build linux
-// +build linux
 
 package iprule
 
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"time"
 
@@ -44,7 +44,7 @@ import (
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
-func create(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]) error {
+func create(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		// Construct the netlink handle for the target namespace for this kernel interface
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
@@ -67,17 +67,6 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 			ps = make(map[int]*networkservice.PolicyRoute)
 			tableIDs.Store(connID, ps)
 		}
-		// Get policies to add and to remove
-		toAdd, toRemove := getPolicyDifferences(ps, conn.Context.IpContext.Policies)
-
-		// Remove no longer existing policies
-		for tableID, policy := range toRemove {
-			if errRule := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); errRule != nil {
-				return errRule
-			}
-			delete(ps, tableID)
-			tableIDs.Store(connID, ps)
-		}
 
 		// Get netns for key to namespace to routing tableID map
 		netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
@@ -85,20 +74,31 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 			return err
 		}
 
+		// Get policies to add and to remove
+		toAdd, toRemove := getPolicyDifferences(ps, conn.Context.IpContext.Policies)
+
+		// Remove no longer existing policies
+		for tableID, policy := range toRemove {
+			if errRule := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index, createNetnsRTableNextID(netNS.UniqueId(), tableID), nsRTableNextIDToConnID); errRule != nil {
+				return errRule
+			}
+			delete(ps, tableID)
+			tableIDs.Store(connID, ps)
+		}
+
 		// Add new policies
 		for _, policy := range toAdd {
 			var tableID int
-			var nsrtid *NetnsRTableNextID
 			// get a free table ID until we succeed
 			for {
 				tableID, err = getFreeTableID(ctx, netlinkHandle)
 				if err != nil {
 					return err
 				}
-				nsrtid = NewNetnsRTableNextID(netNS.UniqueId(), tableID)
-				storedConnID, _ := nsRTableNextIDToConnID.LoadOrStore(*nsrtid, connID)
+				nsrtid := createNetnsRTableNextID(netNS.UniqueId(), tableID)
+				storedConnID, _ := nsRTableNextIDToConnID.LoadOrStore(nsrtid, connID)
 				log.FromContext(ctx).
-					WithField("nsrtid", *nsrtid).
+					WithField("nsrtid", nsrtid).
 					WithField("ConnID", storedConnID).
 					Debug("storedTableID")
 				if connID == storedConnID {
@@ -106,7 +106,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 					break
 				}
 			}
-			if err := addPolicy(ctx, netlinkHandle, policy, l, ps, tableIDs, tableID, connID, *nsrtid, nsRTableNextIDToConnID); err != nil {
+			if err := addPolicy(ctx, netlinkHandle, policy, l, ps, tableIDs, tableID, connID); err != nil {
 				return err
 			}
 		}
@@ -114,9 +114,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 	return nil
 }
 
-func addPolicy(ctx context.Context, netlinkHandle *netlink.Handle, policy *networkservice.PolicyRoute, l netlink.Link, ps policies, tableIDs *genericsync.Map[string, policies], tableID int, connID string, nsrtid NetnsRTableNextID, nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]) error {
-	// release the lock if something fails
-	defer nsRTableNextIDToConnID.Delete(nsrtid)
+func addPolicy(ctx context.Context, netlinkHandle *netlink.Handle, policy *networkservice.PolicyRoute, l netlink.Link, ps policies, tableIDs *genericsync.Map[string, policies], tableID int, connID string) error {
 	// If policy doesn't contain any route - add default
 	if len(policy.Routes) == 0 {
 		policy.Routes = append(policy.Routes, defaultRoute())
@@ -277,7 +275,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route
 	return nil
 }
 
-func del(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[NetnsRTableNextID, string]) error {
+func del(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
@@ -295,12 +293,8 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *generic
 			if err != nil {
 				return err
 			}
-			for tableID := range ps {
-				nsrtid := NewNetnsRTableNextID(netNS.UniqueId(), tableID)
-				nsRTableNextIDToConnID.Delete(*nsrtid)
-			}
 			for tableID, policy := range ps {
-				if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index); err != nil {
+				if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index, createNetnsRTableNextID(netNS.UniqueId(), tableID), nsRTableNextIDToConnID); err != nil {
 					return err
 				}
 			}
@@ -335,10 +329,12 @@ func delRuleOnly(ctx context.Context, handle *netlink.Handle, policy *networkser
 	return nil
 }
 
-func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID, linkIndex int) error {
+func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID, linkIndex int, nsRTableKey netnsRTableNextID, nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) error {
 	if err := flushTable(ctx, handle, tableID, linkIndex); err != nil {
 		return err
 	}
+	nsRTableNextIDToConnID.Delete(nsRTableKey)
+
 	return delRuleOnly(ctx, handle, policy)
 }
 func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex int) error {
@@ -352,10 +348,15 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex 
 		return errors.Wrapf(err, "failed to list routes")
 	}
 	for i := 0; i < len(routes); i++ {
+		// This conditions means the default route. We should delete it properly
+		if routes[i].Dst == nil {
+			routes[i].Dst = &net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}
+		}
 		err := handle.RouteDel(&routes[i])
 		if err != nil {
-			return errors.Wrapf(err, "failed to delete route")
+			return errors.Wrapf(err, "failed to delete route: %v", routes[i].String())
 		}
+
 		log.FromContext(ctx).
 			WithField("Route", &routes[i]).
 			WithField("netlink", "RouteDel").Debug("completed")
