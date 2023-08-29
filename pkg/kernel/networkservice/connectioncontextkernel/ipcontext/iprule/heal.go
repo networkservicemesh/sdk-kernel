@@ -19,7 +19,6 @@
 // limitations under the License.
 
 //go:build linux
-// +build linux
 
 package iprule
 
@@ -27,16 +26,18 @@ import (
 	"context"
 
 	"github.com/edwarnicke/genericsync"
-	"github.com/networkservicemesh/api/pkg/api/networkservice"
-	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netlink"
 
+	"github.com/networkservicemesh/api/pkg/api/networkservice"
+	"github.com/networkservicemesh/api/pkg/api/networkservice/mechanisms/kernel"
+	"github.com/networkservicemesh/sdk/pkg/tools/log"
+
 	link "github.com/networkservicemesh/sdk-kernel/pkg/kernel"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/tools/nshandle"
 )
 
-func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies]) error {
+func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, tableIDs *genericsync.Map[string, policies], nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) error {
 	if mechanism := kernel.ToMechanism(conn.GetMechanism()); mechanism != nil && mechanism.GetVLAN() == 0 {
 		_, ok := tableIDs.Load(conn.GetId())
 		if ok {
@@ -85,12 +86,17 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 			}
 		}
 
-		return deleteRemainders(ctx, netlinkHandle, tableIDtoPolicyMap, podRules, l)
+		return deleteRemainders(ctx, netlinkHandle, tableIDtoPolicyMap, podRules, l, mechanism.GetNetNSURL(), nsRTableNextIDToConnID)
 	}
 	return nil
 }
 
-func deleteRemainders(ctx context.Context, netlinkHandle *netlink.Handle, tableIDtoPolicyMap map[int]*networkservice.PolicyRoute, podRules []netlink.Rule, l netlink.Link) error {
+func deleteRemainders(ctx context.Context, netlinkHandle *netlink.Handle, tableIDtoPolicyMap map[int]*networkservice.PolicyRoute, podRules []netlink.Rule, l netlink.Link, mechanismNetNSURL string, nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) error {
+	// Get netns for key to namespace to routing tableID map
+	netNS, err := nshandle.FromURL(mechanismNetNSURL)
+	if err != nil {
+		return err
+	}
 	for tableID, policy := range tableIDtoPolicyMap {
 		usage := 0
 		for i := range podRules {
@@ -99,7 +105,7 @@ func deleteRemainders(ctx context.Context, netlinkHandle *netlink.Handle, tableI
 			}
 		}
 		if usage == 1 {
-			err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index)
+			err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index, createNetnsRTableNextID(netNS.UniqueId(), tableID), nsRTableNextIDToConnID)
 			if err != nil {
 				return err
 			}

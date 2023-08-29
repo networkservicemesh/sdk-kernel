@@ -16,15 +16,15 @@
 
 package iprule
 
-// NetnsRTableNextID stores Network namespace and Next Routing Table ID
-type NetnsRTableNextID struct {
+// netnsRTableNextID stores Network namespace and Next Routing Table ID
+type netnsRTableNextID struct {
 	ns    string
 	nrtid int
 }
 
-// NewNetnsRTableNextID returns *NetnsRTableNextID entry
-func NewNetnsRTableNextID(ns string, nrtid int) *NetnsRTableNextID {
-	return &NetnsRTableNextID{
+// createNetnsRTableNextID returns netnsRTableNextID entry
+func createNetnsRTableNextID(ns string, nrtid int) netnsRTableNextID {
+	return netnsRTableNextID{
 		ns:    ns,
 		nrtid: nrtid,
 	}
