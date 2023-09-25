@@ -55,6 +55,6 @@ func applyPingGroupRange(ctx context.Context, mech *kernel.Mechanism) error {
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set %s = %s", pingGroupRangeFilename, groupRange)
 	}
-	log.FromContext(ctx).Infof("%s was set to %s", pingGroupRangeFilename, groupRange)
+	log.FromContext(ctx).Debugf("%s was set to %s", pingGroupRangeFilename, groupRange)
 	return nil
 }
