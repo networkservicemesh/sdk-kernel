@@ -1,6 +1,6 @@
 // Copyright (c) 2022 Cisco and/or its affiliates.
 //
-// Copyright (c) 2021-2022 Nordix Foundation.
+// Copyright (c) 2021-2023 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -79,15 +79,9 @@ func (c *injectClient) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (c *injectClient) Close(ctx context.Context, conn *networkservice.Connection, opts ...grpc.CallOption) (*empty.Empty, error) {
-	rv, err := next.Client(ctx).Close(ctx, conn, opts...)
-
 	injectErr := move(ctx, conn, c.vfRefCountMap, &c.vfRefCountMutex, metadata.IsClient(c), true)
-
-	if err != nil && injectErr != nil {
-		return nil, errors.Wrap(err, injectErr.Error())
-	}
 	if injectErr != nil {
 		return nil, injectErr
 	}
-	return rv, err
+	return next.Client(ctx).Close(ctx, conn, opts...)
 }

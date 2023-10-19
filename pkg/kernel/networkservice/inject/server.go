@@ -2,6 +2,8 @@
 //
 // Copyright (c) 2020-2022 Doc.ai and/or its affiliates.
 //
+// Copyright (c) 2023 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,15 +84,9 @@ func (s *injectServer) Request(ctx context.Context, request *networkservice.Netw
 }
 
 func (s *injectServer) Close(ctx context.Context, conn *networkservice.Connection) (*empty.Empty, error) {
-	_, err := next.Server(ctx).Close(ctx, conn)
-
 	moveRenameErr := move(ctx, conn, s.vfRefCountMap, &s.vfRefCountMutex, metadata.IsClient(s), true)
-
-	if err != nil && moveRenameErr != nil {
-		return nil, errors.Wrap(err, moveRenameErr.Error())
-	}
 	if moveRenameErr != nil {
 		return nil, moveRenameErr
 	}
-	return &empty.Empty{}, err
+	return next.Server(ctx).Close(ctx, conn)
 }
