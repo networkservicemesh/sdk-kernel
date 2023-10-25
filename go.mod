@@ -15,7 +15,7 @@ require (
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	go.uber.org/goleak v1.2.1
 	golang.org/x/sys v0.12.0
-	google.golang.org/grpc v1.58.0
+	google.golang.org/grpc v1.58.3
 )
 
 require (
