@@ -14,7 +14,7 @@ require (
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	go.uber.org/goleak v1.3.0
-	golang.org/x/sys v0.14.0
+	golang.org/x/sys v0.14.1-0.20231113162313-11eadc05e9bf
 	google.golang.org/grpc v1.59.0
 )
 
