@@ -8,13 +8,13 @@ require (
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.3
 	github.com/networkservicemesh/api v1.11.1-0.20231031152153-730abd666985
-	github.com/networkservicemesh/sdk v0.5.1-0.20231114141517-70f3d8880671
+	github.com/networkservicemesh/sdk v0.5.1-0.20231115135824-7e78948c1d57
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
 	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
 	go.uber.org/goleak v1.3.0
-	golang.org/x/sys v0.14.0
+	golang.org/x/sys v0.14.1-0.20231113162313-11eadc05e9bf
 	google.golang.org/grpc v1.59.0
 )
 
