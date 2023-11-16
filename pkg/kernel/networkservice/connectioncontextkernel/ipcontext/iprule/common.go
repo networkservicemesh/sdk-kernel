@@ -350,7 +350,11 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex 
 	for i := 0; i < len(routes); i++ {
 		// This conditions means the default route. We should delete it properly
 		if routes[i].Dst == nil {
-			routes[i].Dst = &net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}
+			if routes[i].Family == netlink.FAMILY_V4 {
+				routes[i].Dst = &net.IPNet{IP: net.IPv4zero, Mask: net.CIDRMask(0, 32)}
+			} else if routes[i].Family == netlink.FAMILY_V6 {
+				routes[i].Dst = &net.IPNet{IP: net.IPv6zero, Mask: net.CIDRMask(0, 128)}
+			}
 		}
 		err := handle.RouteDel(&routes[i])
 		if err != nil {
