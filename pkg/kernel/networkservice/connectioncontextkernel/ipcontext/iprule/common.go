@@ -377,18 +377,25 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 		return 0, errors.Wrapf(err, "getFreeTableID: failed to list routes")
 	}
 
+	rules, err := handle.RuleList(netlink.FAMILY_ALL)
+	if err != nil {
+		return 0, errors.Wrapf(err, "getFreeTableID: failed to list rules")
+	}
+
 	// tableID = 0 is reserved
-	ids := make(map[int]int)
-	ids[0] = 0
+	takenTableIDs := make(map[int]struct{})
 	for i := 0; i < len(routes); i++ {
-		ids[routes[i].Table] = routes[i].Table
+		takenTableIDs[routes[i].Table] = struct{}{}
+	}
+
+	for i := 0; i < len(rules); i++ {
+		takenTableIDs[rules[i].Table] = struct{}{}
 	}
 
 	// Find first missing table id
-	tableID := len(ids)
-	for i := 0; i < len(ids); i++ {
-		if _, ok := ids[i]; !ok {
-			tableID = i
+	tableID := 1
+	for ; tableID < len(takenTableIDs); tableID++ {
+		if _, ok := takenTableIDs[tableID]; !ok {
 			break
 		}
 	}
