@@ -40,8 +40,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zk
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/networkservicemesh/api v1.12.1-rc.1.0.20240325104451-92facbceb926 h1:54aC15stuVbz9F4YkxBfOmsT0NpYKWyCFkZbzCEA81U=
 github.com/networkservicemesh/api v1.12.1-rc.1.0.20240325104451-92facbceb926/go.mod h1:B8FmS3XZ7NZY7ZEtdcNg2NHYppDHlr4kl4eecdZN9eI=
-github.com/networkservicemesh/sdk v0.5.1-0.20240402094855-f0105d638501 h1:QNWsdmzK17R4HAGaHyOZvibCOCu3GsnVUVOlbh0szP8=
-github.com/networkservicemesh/sdk v0.5.1-0.20240402094855-f0105d638501/go.mod h1:kSPLlf71rqB+4mAW8MHkrfWs9cMuQJP7RVkGqpHqKmY=
+github.com/networkservicemesh/sdk v0.5.1-0.20240404173808-77fc1533d314 h1:+3EEn2kWmNs5Q7wkeNwhl7UPU2eQc5R0hnR2CnH2R7o=
+github.com/networkservicemesh/sdk v0.5.1-0.20240404173808-77fc1533d314/go.mod h1:kSPLlf71rqB+4mAW8MHkrfWs9cMuQJP7RVkGqpHqKmY=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
