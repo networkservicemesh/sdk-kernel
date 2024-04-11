@@ -4,14 +4,8 @@ on:
   push:
     branches:
       - main
-  workflow_run:
-    types:
-      - completed
-    workflows:
-      - 'automerge'
 jobs:
   update-dependent-repo:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.actor == 'nsmbot' || github.event_name == 'push' }}
     uses: networkservicemesh/.github/.github/workflows/update-dependent-repositories-gomod.yaml@main
     with:
       dependent_repositories: '["sdk-vpp", "sdk-sriov", "cmd-nse-l7-proxy"]'
