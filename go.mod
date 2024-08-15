@@ -7,8 +7,8 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.3
-	github.com/networkservicemesh/api v1.13.4-0.20240814093907-03f6633c2677
-	github.com/networkservicemesh/sdk v0.5.1-0.20240814134105-78bedfb4371f
+	github.com/networkservicemesh/api v1.13.4-0.20240815101554-fdbfcd84fd0e
+	github.com/networkservicemesh/sdk v0.5.1-0.20240815204907-eeb0114b9426
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
