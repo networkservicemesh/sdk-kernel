@@ -25,6 +25,7 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddress"
+	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddresscheck"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipneighbors"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/iprule"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/routes"
@@ -63,6 +64,7 @@ func NewServer() networkservice.NetworkServiceServer {
 		ipneighbors.NewServer(),
 		iprule.NewServer(),
 		routes.NewServer(),
+		ipaddresscheck.NewServer(),
 		ipaddress.NewServer(),
 		pinggrouprange.NewServer(),
 	)
