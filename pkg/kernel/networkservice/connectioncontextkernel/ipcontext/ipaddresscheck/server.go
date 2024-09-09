@@ -1,8 +1,4 @@
-// Copyright (c) 2020-2022 Cisco and/or its affiliates.
-//
-// Copyright (c) 2021-2022 Nordix Foundation.
-//
-// Copyright (c) 2021-2022 Doc.ai and/or its affiliates.
+// Copyright (c) 2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -32,7 +28,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/core/next"
 	"github.com/networkservicemesh/sdk/pkg/networkservice/utils/metadata"
-	"github.com/networkservicemesh/sdk/pkg/tools/log"
 	"github.com/networkservicemesh/sdk/pkg/tools/postpone"
 )
 
@@ -71,8 +66,6 @@ func (i *ipaddressCheckServer) Request(ctx context.Context, request *networkserv
 	if err != nil {
 		return nil, err
 	}
-
-	log.FromContext(ctx).Infof("BACK")
 
 	if err := create(ctx, conn, metadata.IsClient(i)); err != nil {
 		closeCtx, cancelClose := postponeCtxFunc()

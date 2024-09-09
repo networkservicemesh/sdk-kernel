@@ -46,21 +46,17 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		toCheck := make([]*net.IPNet, len(ipNets))
 		copy(toCheck, ipNets)
 
-		log.FromContext(ctx).Infof("mechanism.GetNetNSURL: %v", mechanism.GetNetNSURL())
 		netlinkHandle, err := link.GetNetlinkHandle(mechanism.GetNetNSURL())
 		if err != nil {
 			return err
 		}
 		defer netlinkHandle.Close()
 
-		log.FromContext(ctx).Infof("mechanism.GetInterfaceName: %v", mechanism.GetInterfaceName())
 		ifName := mechanism.GetInterfaceName()
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
 			return errors.Wrapf(err, "failed to find link %s", ifName)
 		}
-
-		log.FromContext(ctx).Infof("ifaceName: %v", ifName)
 
 		return checkIPNets(ctx, netlinkHandle, l, toCheck)
 	}
@@ -70,7 +66,6 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 func checkIPNets(ctx context.Context, netlinkHandle *netlink.Handle, l netlink.Link, ipNets []*net.IPNet) error {
 	now := time.Now()
 
-	log.FromContext(ctx).Infof("current")
 	current := make(map[string]struct{})
 	for _, ipNet := range ipNets {
 		current[ipNet.String()] = struct{}{}
@@ -78,7 +73,6 @@ func checkIPNets(ctx context.Context, netlinkHandle *netlink.Handle, l netlink.L
 
 	for {
 		time.Sleep(time.Millisecond * 500)
-		log.FromContext(ctx).Infof("current len: %v", len(current))
 		if len(current) == 0 {
 			return nil
 		}
@@ -86,17 +80,12 @@ func checkIPNets(ctx context.Context, netlinkHandle *netlink.Handle, l netlink.L
 		case <-ctx.Done():
 			return errors.Wrapf(ctx.Err(), "timeout waiting for update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
 		default:
-			log.FromContext(ctx).Infof("addrlist")
 			addrs, err := netlinkHandle.AddrList(l, netlink.FAMILY_ALL)
 			if err != nil {
 				return errors.Wrapf(err, "failed to get ip addresses for %s", l.Attrs().Name)
 			}
-			log.FromContext(ctx).Infof("got addrs: %v", addrs)
 			for _, addr := range addrs {
-				log.FromContext(ctx).Infof("checking addr: %v", addr)
-				log.FromContext(ctx).Infof("current: %v", current)
 				addrString := addr.IPNet.String()
-				log.FromContext(ctx).Infof("addrString: %v", addrString)
 				if _, ok := current[addrString]; ok {
 					delete(current, addrString)
 					log.FromContext(ctx).
