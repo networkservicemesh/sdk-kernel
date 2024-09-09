@@ -11,8 +11,8 @@ require (
 	github.com/networkservicemesh/sdk v1.14.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
-	github.com/vishvananda/netlink v1.2.1-beta.2.0.20220630165224-c591ada0fb2b
-	github.com/vishvananda/netns v0.0.0-20211101163701-50045581ed74
+	github.com/vishvananda/netlink v1.3.0
+	github.com/vishvananda/netns v0.0.4
 	go.uber.org/goleak v1.3.0
 	golang.org/x/sys v0.18.0
 	google.golang.org/grpc v1.60.1
