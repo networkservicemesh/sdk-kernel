@@ -2,8 +2,6 @@
 //
 // Copyright (c) 2021-2023 Nordix Foundation.
 //
-// Copyright (c) 2024 Cisco and/or its affiliates.
-//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +25,6 @@ import (
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
 
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddress"
-	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipaddresscheck"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/ipneighbors"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/iprule"
 	"github.com/networkservicemesh/sdk-kernel/pkg/kernel/networkservice/connectioncontextkernel/ipcontext/routes"
@@ -66,7 +63,6 @@ func NewServer() networkservice.NetworkServiceServer {
 		ipneighbors.NewServer(),
 		iprule.NewServer(),
 		routes.NewServer(),
-		ipaddresscheck.NewServer(),
 		ipaddress.NewServer(),
 		pinggrouprange.NewServer(),
 	)
