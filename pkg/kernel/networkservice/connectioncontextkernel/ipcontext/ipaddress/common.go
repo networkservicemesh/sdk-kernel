@@ -24,8 +24,8 @@ package ipaddress
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -85,28 +85,10 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 
 		disableIPv6Filename := fmt.Sprintf("/proc/sys/net/ipv6/conf/%s/disable_ipv6", l.Attrs().Name)
 		if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
-			return ioutil.WriteFile(disableIPv6Filename, []byte("0"), 0o600)
+			return os.WriteFile(disableIPv6Filename, []byte("0"), 0o600)
 		}); err != nil {
 			return errors.Wrapf(err, "failed to set %s = 0", disableIPv6Filename)
 		}
-
-		ch := make(chan netlink.AddrUpdate)
-		done := make(chan struct{})
-
-		if err = netlink.AddrSubscribeWithOptions(ch, done, netlink.AddrSubscribeOptions{
-			Namespace:      &targetNetNS,
-			ReceiveTimeout: &unix.Timeval{Sec: 1},
-		}); err != nil {
-			return errors.Wrapf(err, "failed to subscribe for interface address updates")
-		}
-
-		defer func() {
-			close(done)
-			// `ch` should be fully read after the `done` close to prevent goroutine leak in `netlink.AddrSubscribeWithOptions`
-			// nolint: revive
-			for range ch {
-			}
-		}()
 
 		// Get IP addresses to add and to remove
 		toAdd, toRemove, err := getIPAddrDifferences(netlinkHandle, l, ipNets)
@@ -124,7 +106,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		if err := addNewIPAddrs(ctx, netlinkHandle, l, toAdd); err != nil {
 			return err
 		}
-		return waitForIPNets(ctx, ch, l, toAdd)
+		return nil
 	}
 	return nil
 }
@@ -199,38 +181,4 @@ func getIPAddrDifferences(netlinkHandle *netlink.Handle, l netlink.Link, newIPs 
 		toRemove = append(toRemove, ipNet)
 	}
 	return toAdd, toRemove, nil
-}
-
-func waitForIPNets(ctx context.Context, ch chan netlink.AddrUpdate, l netlink.Link, ipNets []*net.IPNet) error {
-	now := time.Now()
-	for {
-		if len(ipNets) == 0 {
-			return nil
-		}
-		j := -1
-		select {
-		case <-ctx.Done():
-			return errors.Wrapf(ctx.Err(), "timeout waiting for update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
-		case update, ok := <-ch:
-			if !ok {
-				return errors.Errorf("failed to receive update to add ip addresses %s to %s (type: %s)", ipNets, l.Attrs().Name, l.Type())
-			}
-			if update.LinkIndex == l.Attrs().Index {
-				for i := range ipNets {
-					if update.LinkAddress.IP.Equal(ipNets[i].IP) && update.Flags&unix.IFA_F_TENTATIVE == 0 {
-						j = i
-						log.FromContext(ctx).
-							WithField("AddrUpdate.LinkAddress", update.LinkAddress).
-							WithField("link.Name", l.Attrs().Name).
-							WithField("duration", time.Since(now)).
-							Debug("complete")
-						break
-					}
-				}
-			}
-		}
-		if j != -1 {
-			ipNets = append(ipNets[:j], ipNets[j+1:]...)
-		}
-	}
 }
