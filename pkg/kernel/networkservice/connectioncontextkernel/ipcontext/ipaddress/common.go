@@ -1,6 +1,6 @@
 // Copyright (c) 2021-2022 Nordix Foundation.
 //
-// Copyright (c) 2020-2023 Cisco and/or its affiliates.
+// Copyright (c) 2020-2024 Cisco and/or its affiliates.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -103,10 +103,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 		}
 
 		// Add new IP addresses
-		if err := addNewIPAddrs(ctx, netlinkHandle, l, toAdd); err != nil {
-			return err
-		}
-		return nil
+		return addNewIPAddrs(ctx, netlinkHandle, l, toAdd)
 	}
 	return nil
 }
