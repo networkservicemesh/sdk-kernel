@@ -17,12 +17,14 @@
 package iprule
 
 // netnsRTableNextID stores Network namespace and Next Routing Table ID
+// nolint: unused
 type netnsRTableNextID struct {
 	ns    string
 	nrtid int
 }
 
 // createNetnsRTableNextID returns netnsRTableNextID entry
+// nolint: unused
 func createNetnsRTableNextID(ns string, nrtid int) netnsRTableNextID {
 	return netnsRTableNextID{
 		ns:    ns,

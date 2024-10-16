@@ -1,6 +1,6 @@
 module github.com/networkservicemesh/sdk-kernel
 
-go 1.20
+go 1.23
 
 require (
 	github.com/edwarnicke/exechelper v1.0.2
