@@ -24,8 +24,8 @@ package ipaddress
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net"
+	"os"
 	"time"
 
 	"github.com/networkservicemesh/api/pkg/api/networkservice"
@@ -85,7 +85,7 @@ func create(ctx context.Context, conn *networkservice.Connection, isClient bool)
 
 		disableIPv6Filename := fmt.Sprintf("/proc/sys/net/ipv6/conf/%s/disable_ipv6", l.Attrs().Name)
 		if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
-			return ioutil.WriteFile(disableIPv6Filename, []byte("0"), 0o600)
+			return os.WriteFile(disableIPv6Filename, []byte("0"), 0o600)
 		}); err != nil {
 			return errors.Wrapf(err, "failed to set %s = 0", disableIPv6Filename)
 		}

@@ -18,7 +18,7 @@ package pinggrouprange
 
 import (
 	"context"
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 	"github.com/vishvananda/netns"
@@ -51,7 +51,7 @@ func applyPingGroupRange(ctx context.Context, mech *kernel.Mechanism) error {
 	defer func() { _ = targetNetNS.Close() }()
 
 	if err = nshandle.RunIn(forwarderNetNS, targetNetNS, func() error {
-		return ioutil.WriteFile(pingGroupRangeFilename, []byte(groupRange), 0o600)
+		return os.WriteFile(pingGroupRangeFilename, []byte(groupRange), 0o600)
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set %s = %s", pingGroupRangeFilename, groupRange)
 	}
