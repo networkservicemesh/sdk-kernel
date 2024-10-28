@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
-// Copyright (c) 2023 Nordix Foundation.
+// Copyright (c) 2023-2024 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -329,14 +329,16 @@ func delRuleOnly(ctx context.Context, handle *netlink.Handle, policy *networkser
 	return nil
 }
 
-func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID, linkIndex int, nsRTableKey netnsRTableNextID, nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) error {
-	if err := flushTable(ctx, handle, tableID, linkIndex); err != nil {
-		return err
+func delRule(ctx context.Context, handle *netlink.Handle, policy *networkservice.PolicyRoute, tableID, linkIndex int, nsRTableKey netnsRTableNextID, nsRTableNextIDToConnID *genericsync.Map[netnsRTableNextID, string]) (err error) {
+	if err = flushTable(ctx, handle, tableID, linkIndex); err == nil {
+		nsRTableNextIDToConnID.Delete(nsRTableKey)
 	}
-	nsRTableNextIDToConnID.Delete(nsRTableKey)
-
-	return delRuleOnly(ctx, handle, policy)
+	if errDelRule := delRuleOnly(ctx, handle, policy); errDelRule != nil {
+		return errDelRule
+	}
+	return err
 }
+
 func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex int) error {
 	routes, err := handle.RouteListFiltered(netlink.FAMILY_ALL,
 		&netlink.Route{

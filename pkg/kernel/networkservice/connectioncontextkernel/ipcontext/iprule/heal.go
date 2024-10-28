@@ -1,8 +1,8 @@
 // Copyright (c) 2022 Doc.ai and/or its affiliates.
 //
-// Copyright (c) 2021-2022 Nordix Foundation.
-//
 // Copyright (c) 2023 Cisco and/or its affiliates.
+//
+// Copyright (c) 2021-2024 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
