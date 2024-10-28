@@ -57,12 +57,12 @@ func recoverTableIDs(ctx context.Context, conn *networkservice.Connection, table
 		ifName := mechanism.GetInterfaceName()
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.Wrapf(err, "failed to find link %s", ifName)
+			return errors.Wrapf(err, "iprule: failed to recover table IDs for interface: %s", ifName)
 		}
 
 		podRules, err := netlinkHandle.RuleList(netlink.FAMILY_ALL)
 		if err != nil {
-			return errors.Wrap(err, "failed to get list of rules")
+			return errors.Wrapf(err, "iprule: failed to recover table IDs in namespace: %s", mechanism.GetNetNSURL())
 		}
 
 		tableIDtoPolicyMap := make(map[int]*networkservice.PolicyRoute)

@@ -56,7 +56,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 		ifName := mechanism.GetInterfaceName()
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.Wrapf(err, "failed to find link %s", ifName)
+			return errors.Wrapf(err, "iprule: failed to create policy rules for interface %s", ifName)
 		}
 		connID := conn.GetId()
 		ps, ok := tableIDs.Load(connID)
@@ -71,7 +71,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 		// Get netns for key to namespace to routing tableID map
 		netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "iprule: failed to create policy rules in namespace: %s", mechanism.GetNetNSURL())
 		}
 
 		// Get policies to add and to remove
@@ -100,7 +100,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 				log.FromContext(ctx).
 					WithField("nsrtid", nsrtid).
 					WithField("ConnID", storedConnID).
-					Debug("storedTableID")
+					Debug("iprule:createNetnsRTableNextID")
 				if connID == storedConnID {
 					// No other connection adding policy using this free routing table ID
 					break
@@ -187,7 +187,7 @@ func policyToRule(policy *networkservice.PolicyRoute) (*netlink.Rule, error) {
 	}
 	srcPortRange, err := networkservice.ParsePortRange(policy.SrcPort)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse port range %s", policy.DstPort)
+		return nil, errors.Wrapf(err, "failed to parse port range %s", policy.SrcPort)
 	}
 	if srcPortRange != nil {
 		rule.Sport = netlink.NewRulePortRange(srcPortRange.Start, srcPortRange.End)
@@ -212,7 +212,7 @@ func ruleAdd(ctx context.Context, handle *netlink.Handle, policy *networkservice
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleAdd").Errorf("error %+v", err)
-		return errors.Wrap(err, "failed to add rule")
+		return errors.Wrap(err, "iprule: failed to add rule")
 	}
 	log.FromContext(ctx).
 		WithField("From", policy.From).
@@ -233,7 +233,7 @@ func defaultRoute() *networkservice.Route {
 
 func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route *networkservice.Route, tableID int) error {
 	if route.GetPrefixIPNet() == nil {
-		return errors.New("kernelRoute prefix must not be nil")
+		return errors.New("iprule: kernelRoute prefix must not be nil")
 	}
 	dst := route.GetPrefixIPNet()
 	dst.IP = dst.IP.Mask(dst.Mask)
@@ -261,7 +261,7 @@ func routeAdd(ctx context.Context, handle *netlink.Handle, l netlink.Link, route
 			WithField("Table", tableID).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RouteReplace").Errorf("error %+v", err)
-		return errors.Wrap(err, "failed to add route")
+		return errors.Wrap(err, "iprule: failed to add route")
 	}
 	log.FromContext(ctx).
 		WithField("link.Name", l.Attrs().Name).
@@ -285,13 +285,13 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *generic
 		ifName := mechanism.GetInterfaceName()
 		l, err := netlinkHandle.LinkByName(ifName)
 		if err != nil {
-			return errors.Wrapf(err, "failed to find link %s", ifName)
+			return errors.Wrapf(err, "iprule: failed to delete policy rules for interface %s", ifName)
 		}
 		ps, ok := tableIDs.LoadAndDelete(conn.GetId())
 		if ok {
 			netNS, err := nshandle.FromURL(mechanism.GetNetNSURL())
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "iprule: failed to delete policy rules in namespace: %s", mechanism.GetNetNSURL())
 			}
 			for tableID, policy := range ps {
 				if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index, createNetnsRTableNextID(netNS.UniqueId(), tableID), nsRTableNextIDToConnID); err != nil {
@@ -317,7 +317,7 @@ func delRuleOnly(ctx context.Context, handle *netlink.Handle, policy *networkser
 			WithField("SrcPort", policy.SrcPort).
 			WithField("duration", time.Since(now)).
 			WithField("netlink", "RuleDel").Errorf("error %+v", err)
-		return errors.Wrapf(err, "failed to delete rule")
+		return errors.Wrapf(err, "iprule: failed to delete rule")
 	}
 	log.FromContext(ctx).
 		WithField("From", policy.From).
@@ -345,7 +345,7 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex 
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
-		return errors.Wrapf(err, "failed to list routes")
+		return errors.Wrapf(err, "iprule: failed to flush routing for tableID:%d, linkID %d", tableID, linkIndex)
 	}
 	for i := 0; i < len(routes); i++ {
 		// This conditions means the default route. We should delete it properly
@@ -358,7 +358,7 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex 
 		}
 		err := handle.RouteDel(&routes[i])
 		if err != nil {
-			return errors.Wrapf(err, "failed to delete route: %v", routes[i].String())
+			return errors.Wrapf(err, "iprule: failed to delete route: %v", routes[i].String())
 		}
 
 		log.FromContext(ctx).
@@ -367,7 +367,7 @@ func flushTable(ctx context.Context, handle *netlink.Handle, tableID, linkIndex 
 	}
 	log.FromContext(ctx).
 		WithField("tableID", tableID).
-		WithField("netlink", "flushTable").Debug("completed")
+		WithField("iprule", "flushTable").Debug("completed")
 	return nil
 }
 
@@ -378,12 +378,12 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 		},
 		netlink.RT_FILTER_TABLE)
 	if err != nil {
-		return 0, errors.Wrapf(err, "getFreeTableID: failed to list routes")
+		return 0, errors.Wrapf(err, "iprule: failed to get free routing table ID, no routes")
 	}
 
 	rules, err := handle.RuleList(netlink.FAMILY_ALL)
 	if err != nil {
-		return 0, errors.Wrapf(err, "getFreeTableID: failed to list rules")
+		return 0, errors.Wrapf(err, "iprule: failed to get free routing table ID, no rules")
 	}
 
 	// tableID = 0 is reserved
@@ -405,7 +405,7 @@ func getFreeTableID(ctx context.Context, handle *netlink.Handle) (int, error) {
 	}
 	log.FromContext(ctx).
 		WithField("tableID", tableID).
-		WithField("netlink", "getFreeTableID").Debug("completed")
+		WithField("iprule", "getFreeTableID").Debug("completed")
 
 	return tableID, nil
 }
