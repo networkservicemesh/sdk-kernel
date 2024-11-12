@@ -26,7 +26,6 @@ package kernel
 
 import (
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -214,8 +213,8 @@ func searchByPCIAddress(ns netns.NsHandle, _, pciAddress string) (netlink.Link, 
 			return errors.Errorf("no net directory under pci device %s: %q", pciAddress, err)
 		}
 
-		var fInfos []fs.FileInfo
-		fInfos, err = ioutil.ReadDir(netDir)
+		var fInfos []fs.DirEntry
+		fInfos, err = os.ReadDir(netDir)
 		if err != nil {
 			return errors.Errorf("failed to read net directory %s: %q", netDir, err)
 		}
@@ -244,14 +243,14 @@ func findNetDir(basePath string) (string, error) {
 	if _, err := os.Lstat(subDir); err == nil {
 		return subDir, nil
 	}
-	files, err := ioutil.ReadDir(basePath)
+	files, err := os.ReadDir(basePath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to read directory %s", basePath)
 	}
 	for _, file := range files {
 		if file.IsDir() {
 			subDir = filepath.Join(basePath, file.Name())
-			subdirFiles, err := ioutil.ReadDir(subDir)
+			subdirFiles, err := os.ReadDir(subDir)
 			if err != nil {
 				return "", errors.Wrapf(err, "failed to read subdirectory %s", subDir)
 			}
