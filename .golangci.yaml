@@ -26,6 +26,29 @@ linters-settings:
           - (github.com/sirupsen/logrus.FieldLogger).Warnf
           - (github.com/sirupsen/logrus.FieldLogger).Errorf
           - (github.com/sirupsen/logrus.FieldLogger).Fatalf
+  revive:
+    confidence: 0.8
+    rules:
+      - name: exported
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: increment-decrement
+      - name: var-naming
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: superfluous-else
+      - name: unreachable-code
   goimports:
     local-prefixes: github.com/networkservicemesh/sdk-kernel/
   gocyclo:
@@ -56,77 +79,45 @@ linters-settings:
     for-loops: false
   gocritic:
     enabled-checks:
-      - appendAssign
-      - assignOp
       - appendCombine
-      - argOrder
-      - badCall
-      - badCond
       - boolExprSimplify
       - builtinShadow
-      - captLocal
-      - caseOrder
-      - codegenComment
-      - commentFormatting
       - commentedOutCode
       - commentedOutImport
-      - defaultCaseOrder
-      - deprecatedComment
       - docStub
-      - dupArg
-      - dupBranchBody
-      - dupCase
       - dupImport
-      - dupSubExpr
-      - elseif
       - emptyFallthrough
       - emptyStringTest
       - equalFold
       - evalOrder
-      - exitAfterDefer
-      - flagDeref
-      - flagName
       - hexLiteral
       - hugeParam
-      - ifElseChain
       - importShadow
       - indexAlloc
       - initClause
       - methodExprCall
       - nestingReduce
-      - newDeref
       - nilValReturn
       - octalLiteral
-      - offBy1
       - paramTypeCombine
-      - ptrToRefParam
       - rangeExprCopy
       - rangeValCopy
-      - regexpMust
       - regexpPattern
-      - singleCaseSwitch
-      - sloppyLen
       - sloppyReassign
       - stringXbytes
-      - switchTrue
       - typeAssertChain
-      - typeSwitchVar
       - typeUnparen
       - unlabelStmt
       - unnamedResult
       - unnecessaryBlock
-      - underef
-      - unlambda
-      - unslice
-      - valSwap
       - weakCond
-      - wrapperFunc
       - yodaStyleExpr
 linters:
   disable-all: true
   enable:
     - goheader
     - bodyclose
+    - unused
     - depguard
     - dogsled
     - dupl
@@ -145,14 +136,13 @@ linters:
     - ineffassign
     - misspell
     - nakedret
+    - copyloopvar
     - staticcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - whitespace
-    - unused
-    - copyloopvar
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0
