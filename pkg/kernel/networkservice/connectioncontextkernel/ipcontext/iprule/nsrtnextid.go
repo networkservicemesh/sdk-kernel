@@ -1,5 +1,7 @@
 // Copyright (c) 2023 Nordix and/or its affiliates.
 //
+// Copyright (c) 2024 Cisco and/or its affiliates.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,12 +19,14 @@
 package iprule
 
 // netnsRTableNextID stores Network namespace and Next Routing Table ID
+// nolint: unused
 type netnsRTableNextID struct {
 	ns    string
 	nrtid int
 }
 
 // createNetnsRTableNextID returns netnsRTableNextID entry
+// nolint: unused
 func createNetnsRTableNextID(ns string, nrtid int) netnsRTableNextID {
 	return netnsRTableNextID{
 		ns:    ns,
