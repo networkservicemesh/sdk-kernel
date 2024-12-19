@@ -8,7 +8,7 @@ require (
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.3
 	github.com/networkservicemesh/api v1.14.2-rc.1.0.20241209080353-bbb4cd5f8f00
-	github.com/networkservicemesh/sdk v0.5.1-0.20241209114224-1e611de3145f
+	github.com/networkservicemesh/sdk v0.5.1-0.20241219162646-55b1f2b101fe
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	github.com/vishvananda/netlink v1.3.1-0.20240922070040-084abd93d350
@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/antonfisher/nested-logrus-formatter v1.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
