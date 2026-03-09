@@ -9,8 +9,8 @@ require (
 	github.com/edwarnicke/genericsync v0.0.0-20220910010113-61a344f9bc29
 	github.com/go-ping/ping v1.0.0
 	github.com/golang/protobuf v1.5.4
-	github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3
-	github.com/networkservicemesh/sdk v0.5.1-0.20260304094338-657e90ddf6ad
+	github.com/networkservicemesh/api v1.17.0
+	github.com/networkservicemesh/sdk v1.17.0
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.11.1
 	github.com/vishvananda/netlink v1.3.1-0.20240922070040-084abd93d350
