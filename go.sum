@@ -47,8 +47,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3 h1:5jggz/kGW+6jo32h1JOk/8LH1dDJDC7lfIOTXvJGvoI=
 github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3/go.mod h1:AciGKdCuOxSBSch22q/jlPqwhLy5tU8B41cwqMb8MPI=
-github.com/networkservicemesh/sdk v0.5.1-0.20260401123920-4ec46252196e h1:AxuvZLt62MvgToCOXUbH8Dm6bPc7JHFnMhukcw+xcRI=
-github.com/networkservicemesh/sdk v0.5.1-0.20260401123920-4ec46252196e/go.mod h1:Shq/GokqnPWOw+cmcUwbiGui/v+tlnq+oqdoFcL2mu0=
+github.com/networkservicemesh/sdk v0.5.1-0.20260407081414-9ac672ca128d h1:uDqLW3o41dDdOd1nyT08Mu860cwQr2pMoyFAwEbKlL8=
+github.com/networkservicemesh/sdk v0.5.1-0.20260407081414-9ac672ca128d/go.mod h1:VAFz8bh26wuHPP78OjtmlJuCmlfAeyWGGzTPnhLOxxc=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
