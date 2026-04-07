@@ -45,10 +45,10 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
-github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3 h1:5jggz/kGW+6jo32h1JOk/8LH1dDJDC7lfIOTXvJGvoI=
-github.com/networkservicemesh/api v1.15.0-rc.1.0.20250625083423-2e0c8496e4e3/go.mod h1:AciGKdCuOxSBSch22q/jlPqwhLy5tU8B41cwqMb8MPI=
-github.com/networkservicemesh/sdk v0.5.1-0.20260407081414-9ac672ca128d h1:uDqLW3o41dDdOd1nyT08Mu860cwQr2pMoyFAwEbKlL8=
-github.com/networkservicemesh/sdk v0.5.1-0.20260407081414-9ac672ca128d/go.mod h1:VAFz8bh26wuHPP78OjtmlJuCmlfAeyWGGzTPnhLOxxc=
+github.com/networkservicemesh/api v1.18.0 h1:7C7AFpAlUnCoMrapD4Xqc1R5SF1+5Xei+lzzTACcC+Q=
+github.com/networkservicemesh/api v1.18.0/go.mod h1:AciGKdCuOxSBSch22q/jlPqwhLy5tU8B41cwqMb8MPI=
+github.com/networkservicemesh/sdk v1.18.0 h1:PvKDHBQlYLva/8ShaltEaKJV3gYcrU9Y/Nk6v88JXC0=
+github.com/networkservicemesh/sdk v1.18.0/go.mod h1:ERsDlMP7FxmmbFjarygxabMVpV/CyJmO1MBnpS9jUgU=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
