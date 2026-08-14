@@ -1,8 +1,8 @@
 // Copyright (c) 2020-2022 Intel Corporation. All Rights Reserved.
 //
-// Copyright (c) 2021-2022 Nordix Foundation.
-//
 // Copyright (c) 2022-2024 Cisco and/or its affiliates.
+//
+// Copyright (c) 2021-2026 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -271,6 +271,7 @@ func searchByName(ns netns.NsHandle, name, _ string) (netlink.Link, error) {
 	if err != nil {
 		return nil, errors.Errorf("failed to create netlink handler: %s", err)
 	}
+	defer handle.Close()
 
 	// get link
 	link, err := handle.LinkByName(name)
