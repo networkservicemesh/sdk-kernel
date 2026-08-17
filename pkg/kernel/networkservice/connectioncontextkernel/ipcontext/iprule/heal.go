@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
-// Copyright (c) 2021-2024 Nordix Foundation.
+// Copyright (c) 2021-2026 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -97,6 +97,7 @@ func deleteRemainders(ctx context.Context, netlinkHandle *netlink.Handle, tableI
 	if err != nil {
 		return err
 	}
+	defer func() { _ = netNS.Close() }()
 	for tableID, policy := range tableIDtoPolicyMap {
 		usage := 0
 		for i := range podRules {

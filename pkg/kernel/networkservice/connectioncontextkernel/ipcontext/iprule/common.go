@@ -2,7 +2,7 @@
 //
 // Copyright (c) 2023 Cisco and/or its affiliates.
 //
-// Copyright (c) 2023-2024 Nordix Foundation.
+// Copyright (c) 2023-2026 Nordix Foundation.
 //
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -73,6 +73,7 @@ func create(ctx context.Context, conn *networkservice.Connection, tableIDs *gene
 		if err != nil {
 			return errors.Wrapf(err, "iprule: failed to create policy rules in namespace: %s", mechanism.GetNetNSURL())
 		}
+		defer func() { _ = netNS.Close() }()
 
 		// Get policies to add and to remove
 		toAdd, toRemove := getPolicyDifferences(ps, conn.Context.IpContext.Policies)
@@ -293,6 +294,7 @@ func del(ctx context.Context, conn *networkservice.Connection, tableIDs *generic
 			if err != nil {
 				return errors.Wrapf(err, "iprule: failed to delete policy rules in namespace: %s", mechanism.GetNetNSURL())
 			}
+			defer func() { _ = netNS.Close() }()
 			for tableID, policy := range ps {
 				if err := delRule(ctx, netlinkHandle, policy, tableID, l.Attrs().Index, createNetnsRTableNextID(netNS.UniqueId(), tableID), nsRTableNextIDToConnID); err != nil {
 					return err
