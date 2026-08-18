@@ -28,8 +28,32 @@ jobs:
   checkgomod:
     uses: networkservicemesh/.github/.github/workflows/checkgomod.yaml@main
 
+  # TODO: revert to the reusable workflow once
+  # networkservicemesh/.github#96 (replace arduino/setup-protoc with a
+  # direct protoc download) is merged and picked up.
   gogenerate:
-    uses: networkservicemesh/.github/.github/workflows/sdk-gogenerate.yaml@main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install protoc
+        run: |
+          curl -sSL -o protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v3.8.0/protoc-3.8.0-linux-x86_64.zip
+          sudo unzip -o protoc.zip -d /usr/local
+          rm protoc.zip
+          protoc --version
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.3
+      - name: Install proto-gen-go
+        run: go install github.com/golang/protobuf/protoc-gen-go@v1.4.2
+      - name: Install go-syncmap
+        run: go install github.com/searKing/golang/tools/cmd/go-syncmap@v1.1.68
+      - name: Generate files
+        run: go generate ./...
+      - name: Check for changes in generated code
+        run: |
+          git diff -- '*.pb.go' || ( echo "Rerun go generate ./... locally and resubmit" && false )
+          git diff -- '*.gen.go' || ( echo "Rerun go generate ./... locally and resubmit" && false )
 
   exclude-replace:
     uses: networkservicemesh/.github/.github/workflows/exclude-replace.yaml@main
