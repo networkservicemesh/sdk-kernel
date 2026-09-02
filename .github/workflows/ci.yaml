@@ -8,28 +8,23 @@ on:
 jobs:
   yamllint:
     uses: networkservicemesh/.github/.github/workflows/yamllint.yaml@main
-
   build-and-test:
     uses: networkservicemesh/.github/.github/workflows/build-and-test.yaml@main
     with:
       os: '["ubuntu-latest", "macos-latest"]'
-
   golangci-lint:
     uses: networkservicemesh/.github/.github/workflows/golangci-lint.yaml@main
-
+    with:
+      linter-version: v2.13.2
   exclude-fmt-errorf:
     uses: networkservicemesh/.github/.github/workflows/exclude-fmt-errorf.yaml@main
-
   restrict-nsm-deps:
     uses: networkservicemesh/.github/.github/workflows/restrict-nsm-deps.yaml@main
     with:
       allowed_repositories: "api, sdk"
-
   checkgomod:
     uses: networkservicemesh/.github/.github/workflows/checkgomod.yaml@main
-
   gogenerate:
     uses: networkservicemesh/.github/.github/workflows/sdk-gogenerate.yaml@main
-
   exclude-replace:
     uses: networkservicemesh/.github/.github/workflows/exclude-replace.yaml@main

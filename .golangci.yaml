@@ -1,126 +1,14 @@
 ---
+version: "2"
 run:
-  # concurrency: 6
-  go: "1.23"
-  timeout: 2m
+  go: "1.25"
   issues-exit-code: 1
   tests: true
-linters-settings:
-  goheader:
-    template-path: ".ci/license/template.txt"
-    values:
-      regexp:
-        company: .*
-        copyright-holder: Copyright \(c\) ({{mod-year-range}}) {{company}}\n\n
-        copyright-holders: ({{copyright-holder}})+
-  errcheck:
-    check-type-assertions: false
-    check-blank: false
-  govet:
-    enable:
-      - shadow
-    settings:
-      printf:
-        funcs:
-          - (github.com/sirupsen/logrus.FieldLogger).Infof
-          - (github.com/sirupsen/logrus.FieldLogger).Warnf
-          - (github.com/sirupsen/logrus.FieldLogger).Errorf
-          - (github.com/sirupsen/logrus.FieldLogger).Fatalf
-  revive:
-    confidence: 0.8
-    rules:
-      - name: exported
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: increment-decrement
-      - name: var-naming
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: superfluous-else
-      - name: unreachable-code
-  goimports:
-    local-prefixes: github.com/networkservicemesh/sdk-kernel/
-  gocyclo:
-    min-complexity: 16
-  dupl:
-    threshold: 150
-  funlen:
-    lines: 100
-    statements: 50
-  goconst:
-    min-len: 2
-    min-occurrences: 2
-  depguard:
-    rules:
-      main:
-        deny:
-          - pkg: "errors"
-            desc: "Please use \"github.com/pkg/errors\" instead of \"errors\" in go imports"
-  # TODO - enable lll config https://github.com/networkservicemesh/sdk-kernel/issues/698
-  # lll:
-  #   line-length: 160
-  misspell:
-    locale: US
-  unparam:
-    check-exported: false
-  nakedret:
-    max-func-lines: 30
-  prealloc:
-    simple: true
-    range-loops: true
-    for-loops: false
-  gocritic:
-    enabled-checks:
-      - appendCombine
-      - boolExprSimplify
-      - builtinShadow
-      - commentedOutCode
-      - commentedOutImport
-      - docStub
-      - dupImport
-      - emptyFallthrough
-      - emptyStringTest
-      - equalFold
-      - evalOrder
-      - hexLiteral
-      - hugeParam
-      - importShadow
-      - indexAlloc
-      - initClause
-      - methodExprCall
-      - nestingReduce
-      - nilValReturn
-      - octalLiteral
-      - paramTypeCombine
-      - rangeExprCopy
-      - rangeValCopy
-      - regexpPattern
-      - sloppyReassign
-      - stringXbytes
-      - typeAssertChain
-      - typeUnparen
-      - unlabelStmt
-      - unnamedResult
-      - unnecessaryBlock
-      - weakCond
-      - yodaStyleExpr
 linters:
-  disable-all: true
+  default: none
   enable:
-    - goheader
     - bodyclose
-    - unused
+    - copyloopvar
     - depguard
     - dogsled
     - dupl
@@ -130,24 +18,159 @@ linters:
     - goconst
     - gocritic
     - gocyclo
-    - gofmt
-    - goimports
-    - revive
+    - goheader
     - gosec
-    - gosimple
     - govet
     - ineffassign
-    # - lll
     - misspell
     - nakedret
-    - copyloopvar
+    - revive
     - staticcheck
-    - stylecheck
-    - typecheck
     - unconvert
     - unparam
+    - unused
     - whitespace
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: errors
+              desc: Please use "github.com/pkg/errors" instead of "errors" in go imports
+    dupl:
+      threshold: 150
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+    funlen:
+      lines: 100
+      statements: 50
+    goconst:
+      min-len: 2
+      min-occurrences: 3
+    gocritic:
+      enabled-checks:
+        - appendCombine
+        - boolExprSimplify
+        - builtinShadow
+        - commentedOutCode
+        - commentedOutImport
+        - docStub
+        - dupImport
+        - emptyFallthrough
+        - emptyStringTest
+        - equalFold
+        - evalOrder
+        - hexLiteral
+        - hugeParam
+        - importShadow
+        - indexAlloc
+        - initClause
+        - methodExprCall
+        - nestingReduce
+        - nilValReturn
+        - octalLiteral
+        - paramTypeCombine
+        - rangeExprCopy
+        - rangeValCopy
+        - regexpPattern
+        - sloppyReassign
+        - stringXbytes
+        - typeAssertChain
+        - typeUnparen
+        - unlabelStmt
+        - unnamedResult
+        - unnecessaryBlock
+        - weakCond
+        - yodaStyleExpr
+    gocyclo:
+      min-complexity: 16
+    goheader:
+      values:
+        regexp:
+          company: .*
+          copyright-holder: Copyright \(c\) ({{mod-year-range}}) {{company}}\n\n
+          copyright-holders: ({{copyright-holder}})+
+      template-path: .ci/license/template.txt
+    govet:
+      enable:
+        - shadow
+      settings:
+        printf:
+          funcs:
+            - (github.com/sirupsen/logrus.FieldLogger).Infof
+            - (github.com/sirupsen/logrus.FieldLogger).Warnf
+            - (github.com/sirupsen/logrus.FieldLogger).Errorf
+            - (github.com/sirupsen/logrus.FieldLogger).Fatalf
+      disable:
+        - inline
+    misspell:
+      locale: US
+    nakedret:
+      max-func-lines: 30
+    prealloc:
+      simple: true
+      range-loops: true
+      for-loops: false
+    revive:
+      confidence: 0.8
+      rules:
+        - name: exported
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: increment-decrement
+        - name: var-naming
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: superfluous-else
+        - name: unreachable-code
+    unparam:
+      check-exported: false
+    gosec:
+      excludes:
+        - G304
+        - G702
+        - G703
+    staticcheck:
+      checks:
+        - all
+        - -SA4023
+        - -QF*
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+    rules:
+      - linters:
+          - goconst
+        path: (_test\.go|/testutil/)
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/networkservicemesh/sdk-kernel/
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
