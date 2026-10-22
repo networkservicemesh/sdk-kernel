@@ -1,5 +1,7 @@
 // Copyright (c) 2022-2023 Cisco and/or its affiliates.
 //
+// Copyright (c) 2026 Nordix Foundation.
+//
 // SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,7 +108,7 @@ func KernelLivenessCheckWithOptions(deadlineCtx context.Context, conn *networkse
 
 				if pinger.GetReceivedPackets() == 0 {
 					err = errors.New("No packets received")
-					logger.Errorf(err.Error())
+					logger.Error(err.Error())
 					responseCh <- err
 					return
 				}
